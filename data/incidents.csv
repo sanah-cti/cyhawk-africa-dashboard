@@ -1,4 +1,4 @@
-Date	Threat Actor	Country	Threat	Industry
+date	actor	country	threat_type	sector  severity  source
 9/3/2025	ifalcon	Sudan	Database	Telecommunications
 9/3/2025	Keymous Plus	Morocco	DDOS	Government
 9/3/2025	Keymous Plus	Morocco	DDOS	Government
