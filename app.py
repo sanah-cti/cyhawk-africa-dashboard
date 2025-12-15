@@ -8,7 +8,7 @@ from fpdf import FPDF
 # Page configuration
 # --------------------------------------------------
 st.set_page_config(
-    page_title="CyHawk Africa | Threat Intelligence",
+    page_title="CyHawk Africa | Threat Intelligence Platform",
     page_icon="assets/cyhawk_logo.png",
     layout="wide"
 )
@@ -16,12 +16,12 @@ st.set_page_config(
 # --------------------------------------------------
 # Header
 # --------------------------------------------------
-c1, c2 = st.columns([1, 7])
+col_logo, col_title = st.columns([1, 7])
 
-with c1:
+with col_logo:
     st.image("assets/cyhawk_logo.png", width=90)
 
-with c2:
+with col_title:
     st.title("CyHawk Africa – Cyber Threat Intelligence Platform")
     st.caption(
         "Africa-focused cyber threat intelligence derived from open-source reporting. "
@@ -45,7 +45,7 @@ def load_data():
 df = load_data()
 
 # --------------------------------------------------
-# Sidebar Filters
+# Sidebar filters
 # --------------------------------------------------
 st.sidebar.image("assets/cyhawk_logo.png", width=130)
 st.sidebar.markdown("## Filters")
@@ -113,16 +113,23 @@ filtered_df = df[
 ]
 
 # --------------------------------------------------
+# Global empty guard
+# --------------------------------------------------
+if filtered_df.empty:
+    st.warning(
+        "No threat intelligence records match the selected filters. "
+        "Adjust filters or date range to view results."
+    )
+    st.stop()
+
+# --------------------------------------------------
 # Metrics
 # --------------------------------------------------
 m1, m2, m3, m4 = st.columns(4)
 
 m1.metric("Total Incidents", len(filtered_df))
 m2.metric("Active Threat Actors", filtered_df["actor"].nunique())
-m3.metric(
-    "High Severity Incidents",
-    len(filtered_df[filtered_df["severity"] == "High"])
-)
+m3.metric("High Severity Incidents", len(filtered_df[filtered_df["severity"] == "High"]))
 m4.metric("Countries Impacted", filtered_df["country"].nunique())
 
 st.divider()
@@ -140,14 +147,17 @@ with c1:
         .rename(columns={"index": "Threat Type", "threat_type": "Count"})
     )
 
-    fig1 = px.pie(
-        threat_dist,
-        names="Threat Type",
-        values="Count",
-        hole=0.45,
-        title="Threat Type Distribution"
-    )
-    st.plotly_chart(fig1, use_container_width=True)
+    if threat_dist.empty:
+        st.info("No data available for Threat Type Distribution.")
+    else:
+        fig1 = px.pie(
+            threat_dist,
+            names="Threat Type",
+            values="Count",
+            hole=0.45,
+            title="Threat Type Distribution"
+        )
+        st.plotly_chart(fig1, use_container_width=True)
 
 with c2:
     severity_dist = (
@@ -157,18 +167,21 @@ with c2:
         .rename(columns={"index": "Severity", "severity": "Count"})
     )
 
-    fig2 = px.bar(
-        severity_dist,
-        x="Severity",
-        y="Count",
-        title="Severity Breakdown"
-    )
-    st.plotly_chart(fig2, use_container_width=True)
+    if severity_dist.empty:
+        st.info("No data available for Severity Breakdown.")
+    else:
+        fig2 = px.bar(
+            severity_dist,
+            x="Severity",
+            y="Count",
+            title="Severity Breakdown"
+        )
+        st.plotly_chart(fig2, use_container_width=True)
 
 st.divider()
 
 # --------------------------------------------------
-# Time-based Analytics
+# Time-based analytics
 # --------------------------------------------------
 st.subheader("Threat Activity Over Time")
 
@@ -179,13 +192,14 @@ daily_df = (
     .reset_index(name="Incidents")
 )
 
-fig_daily = px.line(
-    daily_df,
-    x="day",
-    y="Incidents",
-    title="Daily Threat Activity"
-)
-st.plotly_chart(fig_daily, use_container_width=True)
+if not daily_df.empty:
+    fig_daily = px.line(
+        daily_df,
+        x="day",
+        y="Incidents",
+        title="Daily Threat Activity"
+    )
+    st.plotly_chart(fig_daily, use_container_width=True)
 
 quarterly_df = (
     filtered_df
@@ -194,18 +208,19 @@ quarterly_df = (
     .reset_index(name="Incidents")
 )
 
-fig_quarter = px.bar(
-    quarterly_df,
-    x="quarter",
-    y="Incidents",
-    title="Quarterly Threat Activity"
-)
-st.plotly_chart(fig_quarter, use_container_width=True)
+if not quarterly_df.empty:
+    fig_quarter = px.bar(
+        quarterly_df,
+        x="quarter",
+        y="Incidents",
+        title="Quarterly Threat Activity"
+    )
+    st.plotly_chart(fig_quarter, use_container_width=True)
 
 st.divider()
 
 # --------------------------------------------------
-# Data Table
+# Data table
 # --------------------------------------------------
 st.subheader("Threat Intelligence Records")
 st.dataframe(
@@ -219,10 +234,7 @@ st.dataframe(
 st.divider()
 st.header("Generate Intelligence Report")
 
-report_type = st.selectbox(
-    "Select Report Format",
-    ["CSV", "PDF"]
-)
+report_type = st.selectbox("Select Report Format", ["CSV", "PDF"])
 
 def generate_pdf(df):
     pdf = FPDF()
@@ -253,9 +265,9 @@ def generate_pdf(df):
     for sector, count in df["sector"].value_counts().head(5).items():
         pdf.cell(0, 8, f"- {sector}: {count} incidents", ln=True)
 
-    file_name = f"CyHawk_Threat_Report_{datetime.now().strftime('%Y%m%d')}.pdf"
-    pdf.output(file_name)
-    return file_name
+    filename = f"CyHawk_Threat_Report_{datetime.now().strftime('%Y%m%d')}.pdf"
+    pdf.output(filename)
+    return filename
 
 if st.button("Generate Report"):
     if report_type == "CSV":
@@ -283,4 +295,3 @@ st.caption(
     "This dashboard reflects observed activity and does not necessarily "
     "indicate the time of compromise."
 )
-
