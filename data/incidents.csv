@@ -1,4 +1,4 @@
-date,actor,country,threat_type,industry,severity,source
+date,actor,country,threat_type,sector,severity,source
 2025-09-03,ifalcon,Sudan,Database,Telecommunications,,
 2025-09-03,Keymous Plus,Morocco,DDOS,Government,,
 2025-09-03,Keymous Plus,Morocco,DDOS,Government,,
