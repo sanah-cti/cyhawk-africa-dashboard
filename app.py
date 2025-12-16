@@ -26,7 +26,7 @@ except ImportError:
 
 # Page configuration
 st.set_page_config(
-    page_title="CyHawk Africa - CTI Dashboard",
+    page_title="CyHawk Africa - Cyber Threat Intelligence Dashboard",
     page_icon="🦅",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -428,7 +428,7 @@ with st.spinner("Loading threat intelligence data..."):
 # Top Header
 col1, col2 = st.columns([3, 1])
 with col1:
-    st.markdown(f"""
+    header_html = f"""
         <div class="top-header">
             <div class="brand-section">
                 <div class="brand-logo">🦅</div>
@@ -456,7 +456,8 @@ with col1:
                 </div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
 
 with col2:
     theme_icon = "🌙" if st.session_state.theme == 'dark' else "☀️"
@@ -605,7 +606,7 @@ if len(filtered_df) == 0:
 
 # Status Bar
 current_time = datetime.now().strftime("%I:%M %p")
-st.markdown(f"""
+status_html = f"""
     <div class="status-bar">
         <div class="status-item">
             <div class="status-dot"></div>
@@ -620,10 +621,11 @@ st.markdown(f"""
             <span style="color: {colors['text_secondary']};">Last alert: 4 minutes ago</span>
         </div>
     </div>
-""", unsafe_allow_html=True)
+"""
+st.markdown(status_html, unsafe_allow_html=True)
 
 # Tabs Navigation
-st.markdown(f"""
+tabs_html = """
     <div class="nav-tabs">
         <div class="nav-tab active">Overview</div>
         <div class="nav-tab">Live Feed</div>
@@ -632,7 +634,8 @@ st.markdown(f"""
         <div class="nav-tab">Activity Heatmap</div>
         <div class="nav-tab">Analytics</div>
     </div>
-""", unsafe_allow_html=True)
+"""
+st.markdown(tabs_html, unsafe_allow_html=True)
 
 # Charts Row 1
 col1, col2 = st.columns(2)
@@ -640,12 +643,13 @@ col1, col2 = st.columns(2)
 try:
     with col1:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        st.markdown(f"""
+        header_html = """
             <div class="section-header">
                 <div class="section-icon">📊</div>
                 <h3 class="section-title">Threat Distribution</h3>
             </div>
-        """, unsafe_allow_html=True)
+        """
+        st.markdown(header_html, unsafe_allow_html=True)
         
         threat_counts = filtered_df['threat_type'].value_counts().reset_index()
         threat_counts.columns = ['Threat Type', 'Count']
@@ -672,12 +676,13 @@ try:
     
     with col2:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        st.markdown(f"""
+        header_html = """
             <div class="section-header">
                 <div class="section-icon">⚠️</div>
                 <h3 class="section-title">Severity Breakdown</h3>
             </div>
-        """, unsafe_allow_html=True)
+        """
+        st.markdown(header_html, unsafe_allow_html=True)
         
         severity_counts = filtered_df['severity'].value_counts().reset_index()
         severity_counts.columns = ['Severity', 'Count']
@@ -713,12 +718,13 @@ except Exception as e:
 # Daily Trends Chart
 try:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown(f"""
+    header_html = """
         <div class="section-header">
             <div class="section-icon">📈</div>
             <h3 class="section-title">Daily Trends</h3>
         </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
     
     timeline_df = filtered_df.groupby(filtered_df['date'].dt.date).size().reset_index()
     timeline_df.columns = ['Date', 'Alerts']
@@ -766,12 +772,13 @@ col1, col2 = st.columns(2)
 try:
     with col1:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        st.markdown(f"""
+        header_html = """
             <div class="section-header">
                 <div class="section-icon">🌍</div>
                 <h3 class="section-title">Geographic Distribution</h3>
             </div>
-        """, unsafe_allow_html=True)
+        """
+        st.markdown(header_html, unsafe_allow_html=True)
         
         country_counts = filtered_df['country'].value_counts().head(10).reset_index()
         country_counts.columns = ['Country', 'Count']
