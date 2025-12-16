@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -43,7 +41,7 @@ def toggle_theme():
     st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
 
 # CyHawk Brand Colors
-BRAND_RED = '#DC143C'
+BRAND_RED = '#B91C1C'  # CyHawk red from logo
 BRAND_WHITE = '#FFFFFF'
 DARK_BG = '#0a0e27'
 DARK_CARD = '#141b3d'
@@ -121,6 +119,23 @@ css_styles = f"""
         display: flex;
         align-items: center;
         gap: 1rem;
+    }}
+    
+    .brand-logo-container {{
+        flex-shrink: 0;
+    }}
+    
+    .brand-logo-circle {{
+        width: 60px;
+        height: 60px;
+        background: {colors['accent']};
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: white;
+        border: 2px solid white;
     }}
     
     .brand-logo {{
@@ -431,10 +446,22 @@ with st.spinner("Loading threat intelligence data..."):
 # Top Header
 col1, col2 = st.columns([3, 1])
 with col1:
+    # Check if logo exists
+    logo_path = 'assets/cyhawk_logo.png'
+    if os.path.exists(logo_path):
+        logo_html = f'<img src="data:image/png;base64,{{st.image(logo_path)}}" style="width: 60px; height: 60px; border-radius: 50%;">'
+    else:
+        logo_html = '<div class="brand-logo-circle">🦅</div>'
+    
     header_html = f"""
         <div class="top-header">
             <div class="brand-section">
-                <div class="brand-logo">🦅</div>
+                <div class="brand-logo-container">
+                    <svg width="60" height="60" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="48" fill="{BRAND_RED}" stroke="white" stroke-width="2"/>
+                        <text x="50" y="65" font-size="45" fill="white" text-anchor="middle" font-weight="bold">C</text>
+                    </svg>
+                </div>
                 <div>
                     <h1 class="brand-title">CyHawk Africa</h1>
                     <p class="brand-subtitle">Real-Time Threat Intelligence</p>
@@ -648,7 +675,7 @@ try:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         header_html = """
             <div class="section-header">
-                <div class="section-icon">📊</div>
+                <div class="section-icon">&#128202;</div>
                 <h3 class="section-title">Threat Distribution</h3>
             </div>
         """
@@ -681,7 +708,7 @@ try:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         header_html = """
             <div class="section-header">
-                <div class="section-icon">⚠️</div>
+                <div class="section-icon">&#9888;</div>
                 <h3 class="section-title">Severity Breakdown</h3>
             </div>
         """
@@ -723,7 +750,7 @@ try:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
     header_html = """
         <div class="section-header">
-            <div class="section-icon">📈</div>
+            <div class="section-icon">&#128200;</div>
             <h3 class="section-title">Daily Trends</h3>
         </div>
     """
@@ -777,53 +804,42 @@ try:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         header_html = """
             <div class="section-header">
-                <div class="section-icon">🌍</div>
+                <div class="section-icon">&#127758;</div>
                 <h3 class="section-title">Geographic Distribution</h3>
             </div>
-        st.markdown(header_html, unsafe_allow_html=True)
-
-country_counts = filtered_df['country'].value_counts().head(10).reset_index()
-country_counts.columns = ['Country', 'Count']
-
-fig_geo = px.bar(
-    country_counts,
-    y='Country',
-    x='Count',
-    orientation='h',
-    text='Count',
-    template=colors['plotly_template'],
-    color='Count',
-    color_continuous_scale=[[0, '#141b3d'], [1, BRAND_RED]]
-)
-
-fig_geo.update_traces(
-    textposition='outside',
-    textfont=dict(color=colors['text_primary'])
-)
-
-fig_geo.update_layout(
-    paper_bgcolor=colors['chart_bg'],
-    plot_bgcolor=colors['chart_bg'],
-    font=dict(color=colors['text_primary']),
-    height=350,
-    showlegend=False,
-    xaxis_title="",
-    yaxis_title="",
-    xaxis=dict(showgrid=True, gridcolor=colors['border'])
-)
-
-st.plotly_chart(fig_geo, use_container_width=True, key="geo_dist")
-st.markdown('</div>', unsafe_allow_html=True)
-
-with col2:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-
-    st.markdown(
         """
-        <div class="section-header">
-            <div class="section-icon">🎯</div>
-            <h3 class="section-title">Top Threat Actors</h3>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        st.markdown(header_html, unsafe_allow_html=True)
+        
+        country_counts = filtered_df['country'].value_counts().head(10).reset_index()
+        country_counts.columns = ['Country', 'Count']
+        
+        fig_geo = px.bar(
+            country_counts,
+            y='Country',
+            x='Count',
+            orientation='h',
+            text='Count',
+            template=colors['plotly_template'],
+            color='Count',
+            color_continuous_scale=[[0, '#141b3d'], [1, BRAND_RED]]
+        )
+        fig_geo.update_traces(textposition='outside', textfont=dict(color=colors['text_primary']))
+        fig_geo.update_layout(
+            paper_bgcolor=colors['chart_bg'],
+            plot_bgcolor=colors['chart_bg'],
+            font=dict(color=colors['text_primary']),
+            height=350,
+            showlegend=False,
+            xaxis_title="",
+            yaxis_title="",
+            xaxis=dict(showgrid=True, gridcolor=colors['border'])
+        )
+        st.plotly_chart(fig_geo, width='stretch', key="geo_dist")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class="section-header">
+                <div class="section-icon">🎯</div>
+                <h3 class="
