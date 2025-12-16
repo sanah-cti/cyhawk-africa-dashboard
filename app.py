@@ -774,6 +774,9 @@ with col2:
     st.plotly_chart(fig, use_container_width=True, key="severity_bar", config={'displayModeBar': False})
 
 # Timeline Chart
+timeline_df = filtered_df.groupby(filtered_df['date'].dt.date).size().reset_index()
+timeline_df.columns = ['Date', 'Count']
+
 # Get time range for display
 if len(timeline_df) > 0:
     date_range = f"{timeline_df['Date'].min()} to {timeline_df['Date'].max()}"
@@ -791,9 +794,6 @@ st.markdown(f"""
     </div>
 </div>
 """, unsafe_allow_html=True)
-
-timeline_df = filtered_df.groupby(filtered_df['date'].dt.date).size().reset_index()
-timeline_df.columns = ['Date', 'Count']
 
 fig = go.Figure()
 fig.add_trace(go.Scatter(
@@ -1030,8 +1030,7 @@ with st.sidebar:
         )
     
     st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)
-    st.info("💡 Data updates must be performed through backend administration.", icon="ℹ️")
-
+    
 # --------------------------------------------------
 # FOOTER WITH SYSTEM STATUS
 # --------------------------------------------------
@@ -1058,6 +1057,6 @@ st.markdown(f"""
         </div>
     </div>
     <strong style="color:{C['accent']}">CyHawk Africa</strong> © {datetime.now().year} | Threat Intelligence Platform<br>
-    <small style="color:{C['text_muted']}">Cybersecurity intelligence for Africa</small>
+    <small style="color:{C['text_muted']}">Cyber Intelligence for Africa</small>
 </div>
 """, unsafe_allow_html=True)
