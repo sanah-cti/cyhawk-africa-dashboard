@@ -6,12 +6,13 @@ import pandas as pd
 import os
 import random
 from datetime import timedelta
+import base64
 
 # --------------------------------------------------
 # PAGE CONFIG
 # --------------------------------------------------
 st.set_page_config(
-    page_title="CyHawk Africa – Cyber Threat Intelligence",
+    page_title="CyHawk Africa | Threat Intelligence Platform",
     page_icon="assets/favicon.ico",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -27,106 +28,317 @@ def toggle_theme():
     st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
 
 # --------------------------------------------------
-# BRAND COLORS
+# SOC-GRADE COLORS (Mandiant-inspired)
 # --------------------------------------------------
-BRAND_RED = "#B91C1C"
-DARK_BG = "#0a0e27"
-DARK_CARD = "#141b3d"
-DARK_BORDER = "#1e2847"
+CYHAWK_RED = "#C41E3A"
+CYHAWK_RED_DARK = "#9A1529"
 
-def theme():
+def theme_config():
     if st.session_state.theme == "dark":
         return {
-            "bg": DARK_BG,
-            "card": DARK_CARD,
-            "border": DARK_BORDER,
-            "text": "#FFFFFF",
-            "muted": "#9aa3c7",
+            "bg": "#0D1117",
+            "bg_secondary": "#161B22",
+            "card": "#1C2128",
+            "card_hover": "#22272E",
+            "border": "#30363D",
+            "text": "#E6EDF3",
+            "text_secondary": "#8B949E",
+            "text_muted": "#6E7681",
+            "accent": CYHAWK_RED,
+            "success": "#238636",
+            "warning": "#9E6A03",
+            "danger": "#DA3633",
             "template": "plotly_dark"
         }
     return {
-        "bg": "#f5f7fa",
-        "card": "#ffffff",
-        "border": "#e5e7eb",
-        "text": "#111827",
-        "muted": "#6b7280",
+        "bg": "#FFFFFF",
+        "bg_secondary": "#F6F8FA",
+        "card": "#FFFFFF",
+        "card_hover": "#F6F8FA",
+        "border": "#D0D7DE",
+        "text": "#1F2328",
+        "text_secondary": "#636C76",
+        "text_muted": "#8C959F",
+        "accent": CYHAWK_RED,
+        "success": "#1A7F37",
+        "warning": "#9A6700",
+        "danger": "#D1242F",
         "template": "plotly_white"
     }
 
-C = theme()
+C = theme_config()
 
 # --------------------------------------------------
-# CSS
+# ENTERPRISE-GRADE CSS
 # --------------------------------------------------
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-* {{ font-family: 'Inter', sans-serif; }}
-.main {{ background-color: {C['bg']}; }}
-.stApp {{ background: {C['bg']}; }}
+
+* {{
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}}
+
+.main {{
+    background-color: {C['bg']};
+    padding: 0;
+}}
+
+.stApp {{
+    background: {C['bg']};
+}}
+
 #MainMenu, footer, header {{ visibility: hidden; }}
 
-.top-header {{
+/* Top Navigation Bar */
+.nav-bar {{
     background: {C['card']};
     border-bottom: 1px solid {C['border']};
-    padding: 1.5rem 2rem;
-    margin: -6rem -6rem 2rem -6rem;
+    padding: 0 2rem;
+    margin: -6rem -6rem 0 -6rem;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}}
+
+.nav-brand {{
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}}
+
+.nav-logo {{
+    width: 45px;
+    height: 45px;
+    border-radius: 8px;
+}}
+
+.nav-title {{
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: {C['text']};
+    line-height: 1.2;
+}}
+
+.nav-subtitle {{
+    margin: 0;
+    font-size: 0.75rem;
+    color: {C['text_muted']};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}}
+
+.nav-actions {{
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}}
+
+.status-indicator {{
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: {C['bg_secondary']};
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: {C['text_secondary']};
+}}
+
+.status-dot {{
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: {C['success']};
+    animation: pulse 2s infinite;
+}}
+
+@keyframes pulse {{
+    0%, 100% {{ opacity: 1; }}
+    50% {{ opacity: 0.5; }}
+}}
+
+/* Content Container */
+.content-container {{
+    padding: 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}}
+
+/* Metric Cards */
+.metrics-grid {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}}
+
+.metric-card {{
+    background: {C['card']};
+    border: 1px solid {C['border']};
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+}}
+
+.metric-card:hover {{
+    background: {C['card_hover']};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}}
+
+.metric-label {{
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: {C['text_secondary']};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}}
+
+.metric-value {{
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: {C['accent']};
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}}
+
+.metric-change {{
+    font-size: 0.875rem;
+    color: {C['text_muted']};
+}}
+
+/* Chart Cards */
+.chart-card {{
+    background: {C['card']};
+    border: 1px solid {C['border']};
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: border-color 0.2s ease;
+}}
+
+.chart-card:hover {{
+    border-color: {C['accent']};
+}}
+
+.chart-header {{
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid {C['border']};
 }}
 
-.section-card {{
-    background: {C['card']};
-    border: 1px solid {C['border']};
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-}}
-
-.stat-box {{
-    text-align: center;
-}}
-
-.stat-value {{
-    font-size: 2rem;
-    font-weight: 700;
-    color: {BRAND_RED};
+.chart-title {{
+    font-size: 1rem;
+    font-weight: 600;
+    color: {C['text']};
     margin: 0;
 }}
 
-.stat-label {{
+.chart-badge {{
     font-size: 0.75rem;
-    color: {C['muted']};
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    padding: 0.25rem 0.75rem;
+    background: {C['bg_secondary']};
+    border-radius: 12px;
+    color: {C['text_secondary']};
+    font-weight: 500;
 }}
 
-.brand-logo {{
-    width: 55px;
-    height: 55px;
-    background: {BRAND_RED};
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.8rem;
-    color: white;
-    font-weight: 800;
-    border: 2px solid white;
-}}
-
+/* Sidebar Styling */
 [data-testid="stSidebar"] {{
-    background-color: {C['card']};
+    background: {C['card']};
     border-right: 1px solid {C['border']};
+    padding-top: 1rem;
 }}
 
-.filter-group {{
-    background: {C['card']};
+[data-testid="stSidebar"] .stMarkdown {{
+    color: {C['text']};
+}}
+
+.sidebar-section {{
+    background: {C['bg_secondary']};
     border: 1px solid {C['border']};
     border-radius: 8px;
     padding: 1rem;
     margin-bottom: 1rem;
+}}
+
+.sidebar-title {{
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: {C['text']};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.75rem;
+}}
+
+/* Buttons */
+.stButton > button {{
+    background: {C['accent']};
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.625rem 1.25rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    width: 100%;
+}}
+
+.stButton > button:hover {{
+    background: {CYHAWK_RED_DARK};
+    box-shadow: 0 4px 12px rgba(196, 30, 58, 0.3);
+}}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {{
+    .nav-bar {{
+        padding: 0 1rem;
+        height: auto;
+        min-height: 70px;
+        flex-direction: column;
+        gap: 1rem;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }}
+    
+    .metrics-grid {{
+        grid-template-columns: 1fr;
+    }}
+    
+    .content-container {{
+        padding: 1rem;
+    }}
+    
+    .metric-value {{
+        font-size: 2rem;
+    }}
+    
+    .nav-title {{
+        font-size: 1rem;
+    }}
+}}
+
+/* Footer */
+.footer {{
+    text-align: center;
+    color: {C['text_muted']};
+    padding: 2rem;
+    margin-top: 3rem;
+    border-top: 1px solid {C['border']};
+    font-size: 0.875rem;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -135,18 +347,18 @@ st.markdown(f"""
 # DATA LOADING
 # --------------------------------------------------
 def generate_sample_data():
-    actors = ['APT28', 'Lazarus Group', 'Anonymous Sudan', 'DarkSide', 'REvil', 'ifalcon', 'Keymous Plus']
-    countries = ['Sudan', 'Morocco', 'Nigeria', 'Kenya', 'Egypt', 'South Africa', 'Ghana', 'Ethiopia']
-    threat_types = ['DDOS', 'Data Breach', 'Ransomware', 'Phishing', 'Malware', 'Initial Access']
-    sectors = ['Government', 'Health', 'Agriculture', 'Telecommunications', 'Finance', 'Energy', 'Education']
+    actors = ['APT28', 'Lazarus Group', 'Anonymous Sudan', 'DarkSide', 'REvil']
+    countries = ['Sudan', 'Morocco', 'Nigeria', 'Kenya', 'Egypt', 'South Africa']
+    threat_types = ['Ransomware', 'Data Breach', 'Phishing', 'Malware', 'DDoS']
+    sectors = ['Government', 'Healthcare', 'Finance', 'Telecommunications', 'Energy']
     severities = ['High', 'Medium', 'Low']
-    sources = ['Dark Web', 'Telegram', 'Twitter', 'Forums', 'OSINT']
+    sources = ['Dark Web', 'Telegram', 'OSINT', 'Partner Feed']
     
     data = []
     start_date = datetime(2025, 1, 1)
     
-    for i in range(150):
-        date = start_date + timedelta(days=random.randint(0, 300))
+    for i in range(200):
+        date = start_date + timedelta(days=random.randint(0, 350))
         data.append({
             'date': date,
             'actor': random.choice(actors),
@@ -179,48 +391,38 @@ def load_data():
 df = load_data()
 
 # --------------------------------------------------
-# HEADER
+# NAVIGATION BAR
 # --------------------------------------------------
+def get_logo_base64():
+    logo_path = "assets/cyhawk_logo.png"
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return None
+
+logo_b64 = get_logo_base64()
+
 col1, col2 = st.columns([3, 1])
 
 with col1:
-    total_threats = len(df)
-    active_actors = df['actor'].nunique()
-    high_severity = len(df[df['severity'] == 'High'])
-    countries = df['country'].nunique()
-    
-    # Check if logo exists
-    logo_path = "assets/cyhawk_logo.png"
-    if os.path.exists(logo_path):
-        logo_html = f'<img src="app/static/{logo_path}" style="width:55px;height:55px;border-radius:50%;border:2px solid white;">'
+    if logo_b64:
+        logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="nav-logo">'
     else:
-        logo_html = '<div class="brand-logo">C</div>'
+        logo_html = f'<div class="nav-logo" style="background:{C["accent"]};display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1.5rem;">C</div>'
     
     st.markdown(f"""
-    <div class="top-header">
-        <div style="display:flex;align-items:center;gap:1rem">
+    <div class="nav-bar">
+        <div class="nav-brand">
             {logo_html}
             <div>
-                <h2 style="margin:0;color:{C['text']}">CyHawk Africa</h2>
-                <p style="margin:0;color:{C['muted']};font-size:0.9rem">Real-Time Threat Intelligence</p>
+                <div class="nav-title">CyHawk Africa</div>
+                <div class="nav-subtitle">Threat Intelligence Platform</div>
             </div>
         </div>
-        <div style="display:flex;gap:2rem">
-            <div class="stat-box">
-                <div class="stat-value">{total_threats}</div>
-                <div class="stat-label">Total Threats</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-value">{active_actors}</div>
-                <div class="stat-label">Active Actors</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-value">{high_severity}</div>
-                <div class="stat-label">High Severity</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-value">{countries}</div>
-                <div class="stat-label">Countries</div>
+        <div class="nav-actions">
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>Live Monitoring</span>
             </div>
         </div>
     </div>
@@ -235,99 +437,170 @@ with col2:
 # SIDEBAR FILTERS
 # --------------------------------------------------
 with st.sidebar:
-    st.markdown('<div class="filter-group">', unsafe_allow_html=True)
-    st.markdown("### 🔍 Filters")
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">⏱ Time Period</div>', unsafe_allow_html=True)
     
-    filter_mode = st.radio("Time Filter", ["All Data", "Year", "Month", "Quarter"], index=0)
+    filter_mode = st.selectbox("", ["All Data", "Year", "Month", "Quarter"], label_visibility="collapsed")
     
     filtered_df = df.copy()
     
     if filter_mode == "Year":
         years = sorted(df['year'].unique(), reverse=True)
-        selected_years = st.multiselect("Select Year(s)", options=years, default=years)
+        selected_years = st.multiselect("Years", options=years, default=years)
         filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
     
     elif filter_mode == "Month":
         selected_year = st.selectbox("Year", options=sorted(df['year'].unique(), reverse=True))
         months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-        selected_months = st.multiselect("Month(s)", options=months, default=months)
+        selected_months = st.multiselect("Months", options=months, default=months)
         filtered_df = filtered_df[(filtered_df['year'] == selected_year) & (filtered_df['month_name'].isin(selected_months))]
     
     elif filter_mode == "Quarter":
         selected_year = st.selectbox("Year", options=sorted(df['year'].unique(), reverse=True))
         quarters = sorted(df[df['year'] == selected_year]['quarter'].unique())
-        selected_quarters = st.multiselect("Quarter(s)", options=quarters, default=quarters, format_func=lambda x: f"Q{x}")
+        selected_quarters = st.multiselect("Quarters", options=quarters, default=quarters, format_func=lambda x: f"Q{x}")
         filtered_df = filtered_df[(filtered_df['year'] == selected_year) & (filtered_df['quarter'].isin(selected_quarters))]
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="filter-group">', unsafe_allow_html=True)
-    st.markdown("### 🎯 Categories")
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">🎯 Filters</div>', unsafe_allow_html=True)
     
     selected_threat_types = st.multiselect("Threat Type", options=sorted(df['threat_type'].unique()), default=df['threat_type'].unique())
     selected_severity = st.multiselect("Severity", options=sorted(df['severity'].unique()), default=df['severity'].unique())
     selected_sectors = st.multiselect("Sector", options=sorted(df['sector'].unique()), default=df['sector'].unique())
-    selected_countries = st.multiselect("Country", options=sorted(df['country'].unique()), default=df['country'].unique())
     
     filtered_df = filtered_df[
         (filtered_df['threat_type'].isin(selected_threat_types)) &
         (filtered_df['severity'].isin(selected_severity)) &
-        (filtered_df['sector'].isin(selected_sectors)) &
-        (filtered_df['country'].isin(selected_countries))
+        (filtered_df['sector'].isin(selected_sectors))
     ]
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="filter-group">', unsafe_allow_html=True)
-    st.metric("Filtered Records", len(filtered_df))
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">📊 Coverage</div>', unsafe_allow_html=True)
+    coverage = (len(filtered_df) / len(df)) * 100 if len(df) > 0 else 0
+    st.metric("Active Filters", f"{coverage:.0f}%")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --------------------------------------------------
-# CHARTS
+# MAIN CONTENT
 # --------------------------------------------------
+st.markdown('<div class="content-container">', unsafe_allow_html=True)
+
+# Key Metrics
+total_threats = len(filtered_df)
+high_severity = len(filtered_df[filtered_df['severity'] == 'High'])
+active_actors = filtered_df['actor'].nunique()
+countries_affected = filtered_df['country'].nunique()
+
+st.markdown(f"""
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total Threats</div>
+        <div class="metric-value">{total_threats}</div>
+        <div class="metric-change">Across all sources</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">High Severity</div>
+        <div class="metric-value">{high_severity}</div>
+        <div class="metric-change">Requires immediate attention</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Threat Actors</div>
+        <div class="metric-value">{active_actors}</div>
+        <div class="metric-change">Unique identifiers</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Countries</div>
+        <div class="metric-value">{countries_affected}</div>
+        <div class="metric-change">Geographic coverage</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Charts Row 1
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3 class="chart-title">Threat Classification</h3>
+            <span class="chart-badge">Distribution</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
     threat_counts = filtered_df['threat_type'].value_counts().reset_index()
     threat_counts.columns = ['Threat Type', 'Count']
     
-    fig = px.pie(
+    fig = px.bar(
         threat_counts,
-        names='Threat Type',
-        values='Count',
-        hole=0.5,
+        x='Count',
+        y='Threat Type',
+        orientation='h',
         template=C["template"],
-        color_discrete_sequence=px.colors.sequential.Reds
+        color='Count',
+        color_continuous_scale=[[0, C['card']], [1, C['accent']]]
     )
-    fig.update_layout(title="Threat Distribution", height=350)
-    st.plotly_chart(fig, use_container_width=True, key="threat_pie")
-    st.markdown('</div>', unsafe_allow_html=True)
+    fig.update_layout(
+        height=300,
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color=C['text'], size=12),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False)
+    )
+    fig.update_traces(marker_line_width=0)
+    st.plotly_chart(fig, use_container_width=True, key="threat_bar")
 
 with col2:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3 class="chart-title">Severity Analysis</h3>
+            <span class="chart-badge">Risk Levels</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
     severity_counts = filtered_df['severity'].value_counts().reset_index()
     severity_counts.columns = ['Severity', 'Count']
     
-    color_map = {'High': BRAND_RED, 'Medium': '#ffc107', 'Low': '#00ff88'}
+    color_map = {'High': C['danger'], 'Medium': C['warning'], 'Low': C['success']}
     fig = px.bar(
         severity_counts,
         x='Severity',
         y='Count',
         template=C["template"],
         color='Severity',
-        color_discrete_map=color_map,
-        text='Count'
+        color_discrete_map=color_map
     )
-    fig.update_traces(textposition='outside')
-    fig.update_layout(title="Severity Breakdown", height=350, showlegend=False)
+    fig.update_layout(
+        height=300,
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color=C['text'], size=12),
+        xaxis=dict(showgrid=False, title=""),
+        yaxis=dict(showgrid=False, title="")
+    )
     st.plotly_chart(fig, use_container_width=True, key="severity_bar")
-    st.markdown('</div>', unsafe_allow_html=True)
 
-# --------------------------------------------------
-# TIMELINE
-# --------------------------------------------------
-st.markdown('<div class="section-card">', unsafe_allow_html=True)
+# Timeline Chart
+st.markdown(f"""
+<div class="chart-card">
+    <div class="chart-header">
+        <h3 class="chart-title">Activity Timeline</h3>
+        <span class="chart-badge">Daily Aggregation</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 timeline_df = filtered_df.groupby(filtered_df['date'].dt.date).size().reset_index()
 timeline_df.columns = ['Date', 'Count']
@@ -338,149 +611,142 @@ fig.add_trace(go.Scatter(
     y=timeline_df['Count'],
     mode="lines",
     fill="tozeroy",
-    line=dict(color='#00d4ff', width=2),
-    fillcolor='rgba(0, 212, 255, 0.2)'
+    line=dict(color=C['accent'], width=2),
+    fillcolor=f"rgba(196, 30, 58, 0.1)"
 ))
 fig.update_layout(
-    title="Daily Threat Activity",
+    height=250,
+    margin=dict(l=0, r=0, t=0, b=0),
     template=C["template"],
-    height=300,
-    xaxis_title="",
-    yaxis_title="Number of Threats"
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
+    font=dict(color=C['text'], size=12),
+    xaxis=dict(showgrid=False, title=""),
+    yaxis=dict(showgrid=False, title=""),
+    hovermode='x unified'
 )
 st.plotly_chart(fig, use_container_width=True, key="timeline")
 
-st.markdown('</div>', unsafe_allow_html=True)
-
-# --------------------------------------------------
-# SECTOR & COUNTRY CHARTS
-# --------------------------------------------------
+# Charts Row 2
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3 class="chart-title">Sector Impact</h3>
+            <span class="chart-badge">Top 10</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
     sector_counts = filtered_df['sector'].value_counts().head(10).reset_index()
     sector_counts.columns = ['Sector', 'Count']
     
     fig = px.bar(
         sector_counts,
-        y='Sector',
         x='Count',
+        y='Sector',
         orientation='h',
         template=C["template"],
         color='Count',
-        color_continuous_scale=[[0, '#141b3d'], [1, BRAND_RED]],
-        text='Count'
+        color_continuous_scale=[[0, C['card']], [1, C['accent']]]
     )
-    fig.update_traces(textposition='outside')
-    fig.update_layout(title="Top Affected Sectors", height=350, showlegend=False)
+    fig.update_layout(
+        height=300,
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color=C['text'], size=12),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False)
+    )
     st.plotly_chart(fig, use_container_width=True, key="sector_bar")
-    st.markdown('</div>', unsafe_allow_html=True)
 
 with col2:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3 class="chart-title">Geographic Distribution</h3>
+            <span class="chart-badge">By Country</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
     country_counts = filtered_df['country'].value_counts().head(10).reset_index()
     country_counts.columns = ['Country', 'Count']
     
     fig = px.bar(
         country_counts,
-        y='Country',
         x='Count',
+        y='Country',
         orientation='h',
         template=C["template"],
         color='Count',
-        color_continuous_scale=[[0, '#141b3d'], [1, BRAND_RED]],
-        text='Count'
+        color_continuous_scale=[[0, C['card']], [1, C['accent']]]
     )
-    fig.update_traces(textposition='outside')
-    fig.update_layout(title="Geographic Distribution", height=350, showlegend=False)
+    fig.update_layout(
+        height=300,
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color=C['text'], size=12),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False)
+    )
     st.plotly_chart(fig, use_container_width=True, key="country_bar")
-    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 # --------------------------------------------------
 # EXPORT & DATA MANAGEMENT
 # --------------------------------------------------
 with st.sidebar:
-    st.markdown('<div class="filter-group">', unsafe_allow_html=True)
-    st.markdown("### 📥 Export Report")
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">📥 Export</div>', unsafe_allow_html=True)
     
-    report_format = st.radio("Format", ["CSV", "Summary CSV"], label_visibility="collapsed")
-    
-    if st.button("📄 Generate Report", use_container_width=True):
-        if report_format == "CSV":
-            # Full detailed report (no raw data shown on dashboard)
-            csv_buffer = filtered_df.to_csv(index=False)
-            st.download_button(
-                label="⬇️ Download Full Report (CSV)",
-                data=csv_buffer,
-                file_name=f"cyhawk_full_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-        else:
-            # Summary report
-            import io
-            summary_buffer = io.StringIO()
-            summary_buffer.write("CyHawk Africa - Threat Intelligence Summary Report\n")
-            summary_buffer.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            summary_buffer.write(f"Period: {filtered_df['date'].min()} to {filtered_df['date'].max()}\n\n")
-            summary_buffer.write(f"Total Threats: {len(filtered_df)}\n")
-            summary_buffer.write(f"High Severity: {len(filtered_df[filtered_df['severity'] == 'High'])}\n")
-            summary_buffer.write(f"Unique Threat Actors: {filtered_df['actor'].nunique()}\n")
-            summary_buffer.write(f"Countries Affected: {filtered_df['country'].nunique()}\n\n")
-            summary_buffer.write("Top Threat Types:\n")
-            summary_buffer.write(filtered_df['threat_type'].value_counts().to_string())
-            summary_buffer.write("\n\nTop Affected Sectors:\n")
-            summary_buffer.write(filtered_df['sector'].value_counts().to_string())
-            
-            st.download_button(
-                label="⬇️ Download Summary Report (CSV)",
-                data=summary_buffer.getvalue(),
-                file_name=f"cyhawk_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
-    
+    if st.button("Generate Report", use_container_width=True):
+        csv = filtered_df.to_csv(index=False)
+        st.download_button(
+            label="⬇️ Download CSV",
+            data=csv,
+            file_name=f"cyhawk_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Data update section
-    st.markdown('<div class="filter-group">', unsafe_allow_html=True)
-    st.markdown("### 📊 Update Data")
-    st.info("Upload a new incidents.csv file to update the dashboard data.")
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">📊 Update Data</div>', unsafe_allow_html=True)
     
     uploaded_file = st.file_uploader("Upload CSV", type=['csv'], label_visibility="collapsed")
     
-    if uploaded_file is not None:
+    if uploaded_file:
         try:
-            # Read the uploaded file
             new_df = pd.read_csv(uploaded_file)
-            
-            # Validate required columns
-            required_columns = ['date', 'actor', 'country', 'threat_type', 'sector', 'severity', 'source']
-            if all(col in new_df.columns for col in required_columns):
-                # Save to data folder
+            required = ['date', 'actor', 'country', 'threat_type', 'sector', 'severity', 'source']
+            if all(col in new_df.columns for col in required):
                 os.makedirs('data', exist_ok=True)
                 new_df.to_csv('data/incidents.csv', index=False)
-                st.success("✅ Data updated successfully!")
-                st.info("🔄 Please refresh the page to see the updated data.")
-                
-                if st.button("🔄 Refresh Dashboard", use_container_width=True):
+                st.success("✅ Data updated")
+                if st.button("🔄 Refresh", use_container_width=True):
                     st.cache_data.clear()
                     st.rerun()
             else:
-                st.error(f"❌ CSV must contain columns: {', '.join(required_columns)}")
+                st.error("❌ Invalid columns")
         except Exception as e:
-            st.error(f"❌ Error uploading file: {str(e)}")
+            st.error(f"❌ Error: {str(e)}")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --------------------------------------------------
-# FOOTER (NO RAW DATA DISPLAY)
+# FOOTER
 # --------------------------------------------------
 st.markdown(f"""
-<div style="text-align:center;color:{C['muted']};padding:2rem;border-top:1px solid {C['border']};margin-top:2rem">
-    <strong style="color:{BRAND_RED}">CyHawk Africa</strong> © {datetime.now().year} — Cyber Threat Intelligence Platform<br>
-    <small>Dashboard showing aggregated intelligence metrics | Operational data restricted to authorized partners</small><br>
-    <small style="opacity:0.7">Analyzing {len(filtered_df)} threat indicators from {len(df)} total records</small>
+<div class="footer">
+    <strong style="color:{C['accent']}">CyHawk Africa</strong> © {datetime.now().year} | Threat Intelligence Platform<br>
+    <small style="color:{C['text_muted']}">Enterprise-grade security intelligence for Africa | Data restricted to authorized partners</small>
 </div>
 """, unsafe_allow_html=True)
