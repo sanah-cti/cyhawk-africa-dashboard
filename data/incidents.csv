@@ -366,10 +366,10 @@ date,actor,country,threat_type,sector,severity,source
 2025-01-08,Anonymous Sudan,Central Africa,DDOS,Government,High,Telegram
 2025-01-08,Funksec,Egypt,Ransomware,Government,Critical,Leak Site
 2025-01-09,Funksec,Egypt,Ransomware,Government,Critical,Leak Site
-2025-01-09,Banshe,South Africa,,Retail,,
+2025-01-09,Banshe,South Africa,Unknown,Retail,Unknown,Dark Web
 2025-01-11,Funksec,Morocco,Ransomware,Technology,Critical,Leak Site
 2025-01-12,RansomHub,Nigeria,Ransomware,Oil and Gas,High,Leak Site
-2025-01-13,Rey,Rwanda,,Education,,
+2025-01-13,Rey,Rwanda,Database,Education,Critical,Dark Web
 2025-01-14,Spacebears,Egypt,Ransomware,Hospitality,High,Leak Site
 2025-01-15,Funksec,Egypt,Ransomware,Government,Critical,Leak Site
 2025-01-16,Anonymous Sudan,Libya,DDOS,Government,High,Telegram
