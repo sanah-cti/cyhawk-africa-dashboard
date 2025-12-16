@@ -807,39 +807,41 @@ try:
                 <div class="section-icon">&#127758;</div>
                 <h3 class="section-title">Geographic Distribution</h3>
             </div>
-        """
         st.markdown(header_html, unsafe_allow_html=True)
-        
-        country_counts = filtered_df['country'].value_counts().head(10).reset_index()
-        country_counts.columns = ['Country', 'Count']
-        
-        fig_geo = px.bar(
-            country_counts,
-            y='Country',
-            x='Count',
-            orientation='h',
-            text='Count',
-            template=colors['plotly_template'],
-            color='Count',
-            color_continuous_scale=[[0, '#141b3d'], [1, BRAND_RED]]
-        )
-        fig_geo.update_traces(textposition='outside', textfont=dict(color=colors['text_primary']))
-        fig_geo.update_layout(
-            paper_bgcolor=colors['chart_bg'],
-            plot_bgcolor=colors['chart_bg'],
-            font=dict(color=colors['text_primary']),
-            height=350,
-            showlegend=False,
-            xaxis_title="",
-            yaxis_title="",
-            xaxis=dict(showgrid=True, gridcolor=colors['border'])
-        )
-        st.plotly_chart(fig_geo, width='stretch', key="geo_dist")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        st.markdown(f"""
-            <div class="section-header">
-                <div class="section-icon">🎯</div>
-                <h3 class="
+
+country_counts = filtered_df['country'].value_counts().head(10).reset_index()
+country_counts.columns = ['Country', 'Count']
+
+fig_geo = px.bar(
+    country_counts,
+    y='Country',
+    x='Count',
+    orientation='h',
+    text='Count',
+    template=colors['plotly_template'],
+    color='Count',
+    color_continuous_scale=[[0, '#141b3d'], [1, BRAND_RED]]
+)
+
+fig_geo.update_traces(
+    textposition='outside',
+    textfont=dict(color=colors['text_primary'])
+)
+
+fig_geo.update_layout(
+    paper_bgcolor=colors['chart_bg'],
+    plot_bgcolor=colors['chart_bg'],
+    font=dict(color=colors['text_primary']),
+    height=350,
+    showlegend=False,
+    xaxis_title="",
+    yaxis_title="",
+    xaxis=dict(showgrid=True, gridcolor=colors['border'])
+)
+
+st.plotly_chart(fig_geo, use_container_width=True, key="geo_dist")
+st.markdown("</div>", unsafe_allow_html=True)
+
+with col2:
+    st.markdown('<div
+
