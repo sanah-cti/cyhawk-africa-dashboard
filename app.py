@@ -446,22 +446,15 @@ with st.spinner("Loading threat intelligence data..."):
 # Top Header
 col1, col2 = st.columns([3, 1])
 with col1:
-    # Check if logo exists
-    logo_path = 'assets/cyhawk_logo.png'
-    if os.path.exists(logo_path):
-        logo_html = f'<img src="data:image/png;base64,{{st.image(logo_path)}}" style="width: 60px; height: 60px; border-radius: 50%;">'
-    else:
-        logo_html = '<div class="brand-logo-circle">🦅</div>'
+    total_threats = len(df)
+    active_actors = df['actor'].nunique()
+    high_severity = len(df[df['severity'] == 'High'])
+    countries = df['country'].nunique()
     
-    header_html = f"""
+    st.markdown(f"""
         <div class="top-header">
             <div class="brand-section">
-                <div class="brand-logo-container">
-                    <svg width="60" height="60" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="48" fill="{BRAND_RED}" stroke="white" stroke-width="2"/>
-                        <text x="50" y="65" font-size="45" fill="white" text-anchor="middle" font-weight="bold">C</text>
-                    </svg>
-                </div>
+                <div class="brand-logo-circle">C</div>
                 <div>
                     <h1 class="brand-title">CyHawk Africa</h1>
                     <p class="brand-subtitle">Real-Time Threat Intelligence</p>
@@ -469,25 +462,24 @@ with col1:
             </div>
             <div class="stats-bar">
                 <div class="stat-item">
-                    <div class="stat-value">{len(df)}</div>
+                    <div class="stat-value">{total_threats}</div>
                     <div class="stat-label">Total Threats</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">{df['actor'].nunique()}</div>
+                    <div class="stat-value">{active_actors}</div>
                     <div class="stat-label">Active Actors</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">{len(df[df['severity'] == 'High'])}</div>
+                    <div class="stat-value">{high_severity}</div>
                     <div class="stat-label">High Severity</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">{df['country'].nunique()}</div>
+                    <div class="stat-value">{countries}</div>
                     <div class="stat-label">Countries</div>
                 </div>
             </div>
         </div>
-    """
-    st.markdown(header_html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 with col2:
     theme_icon = "🌙" if st.session_state.theme == 'dark' else "☀️"
@@ -636,26 +628,28 @@ if len(filtered_df) == 0:
 
 # Status Bar
 current_time = datetime.now().strftime("%I:%M %p")
-status_html = f"""
+success_color = colors['success']
+text_color = colors['text_secondary']
+
+st.markdown(f"""
     <div class="status-bar">
         <div class="status-item">
             <div class="status-dot"></div>
-            <span style="color: {colors['success']}; font-weight: 600;">Feed Connected</span>
+            <span style="color: {success_color}; font-weight: 600;">Feed Connected</span>
         </div>
         <div class="status-item">
             <div class="status-dot status-warning"></div>
-            <span style="color: {colors['text_secondary']};">Charts updating...</span>
+            <span style="color: {text_color};">Charts updating...</span>
         </div>
         <div class="status-item">
             <div class="status-dot"></div>
-            <span style="color: {colors['text_secondary']};">Last alert: 4 minutes ago</span>
+            <span style="color: {text_color};">Last alert: 4 minutes ago</span>
         </div>
     </div>
-"""
-st.markdown(status_html, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # Tabs Navigation
-tabs_html = """
+st.markdown("""
     <div class="nav-tabs">
         <div class="nav-tab active">Overview</div>
         <div class="nav-tab">Live Feed</div>
@@ -664,8 +658,7 @@ tabs_html = """
         <div class="nav-tab">Activity Heatmap</div>
         <div class="nav-tab">Analytics</div>
     </div>
-"""
-st.markdown(tabs_html, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # Charts Row 1
 col1, col2 = st.columns(2)
@@ -673,13 +666,12 @@ col1, col2 = st.columns(2)
 try:
     with col1:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        header_html = """
+        st.markdown("""
             <div class="section-header">
                 <div class="section-icon">&#128202;</div>
                 <h3 class="section-title">Threat Distribution</h3>
             </div>
-        """
-        st.markdown(header_html, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
         
         threat_counts = filtered_df['threat_type'].value_counts().reset_index()
         threat_counts.columns = ['Threat Type', 'Count']
@@ -706,13 +698,12 @@ try:
     
     with col2:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        header_html = """
+        st.markdown("""
             <div class="section-header">
                 <div class="section-icon">&#9888;</div>
                 <h3 class="section-title">Severity Breakdown</h3>
             </div>
-        """
-        st.markdown(header_html, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
         
         severity_counts = filtered_df['severity'].value_counts().reset_index()
         severity_counts.columns = ['Severity', 'Count']
@@ -748,13 +739,12 @@ except Exception as e:
 # Daily Trends Chart
 try:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    header_html = """
+    st.markdown("""
         <div class="section-header">
             <div class="section-icon">&#128200;</div>
             <h3 class="section-title">Daily Trends</h3>
         </div>
-    """
-    st.markdown(header_html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
     
     timeline_df = filtered_df.groupby(filtered_df['date'].dt.date).size().reset_index()
     timeline_df.columns = ['Date', 'Alerts']
@@ -802,46 +792,43 @@ col1, col2 = st.columns(2)
 try:
     with col1:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        header_html = """
+        st.markdown("""
             <div class="section-header">
                 <div class="section-icon">&#127758;</div>
                 <h3 class="section-title">Geographic Distribution</h3>
             </div>
-        st.markdown(header_html, unsafe_allow_html=True)
-
-country_counts = filtered_df['country'].value_counts().head(10).reset_index()
-country_counts.columns = ['Country', 'Count']
-
-fig_geo = px.bar(
-    country_counts,
-    y='Country',
-    x='Count',
-    orientation='h',
-    text='Count',
-    template=colors['plotly_template'],
-    color='Count',
-    color_continuous_scale=[[0, '#141b3d'], [1, BRAND_RED]]
-)
-
-fig_geo.update_traces(
-    textposition='outside',
-    textfont=dict(color=colors['text_primary'])
-)
-
-fig_geo.update_layout(
-    paper_bgcolor=colors['chart_bg'],
-    plot_bgcolor=colors['chart_bg'],
-    font=dict(color=colors['text_primary']),
-    height=350,
-    showlegend=False,
-    xaxis_title="",
-    yaxis_title="",
-    xaxis=dict(showgrid=True, gridcolor=colors['border'])
-)
-
-st.plotly_chart(fig_geo, use_container_width=True, key="geo_dist")
-st.markdown("</div>", unsafe_allow_html=True)
-
-with col2:
-    st.markdown('<div
-
+        """, unsafe_allow_html=True)
+        
+        country_counts = filtered_df['country'].value_counts().head(10).reset_index()
+        country_counts.columns = ['Country', 'Count']
+        
+        fig_geo = px.bar(
+            country_counts,
+            y='Country',
+            x='Count',
+            orientation='h',
+            text='Count',
+            template=colors['plotly_template'],
+            color='Count',
+            color_continuous_scale=[[0, '#141b3d'], [1, BRAND_RED]]
+        )
+        fig_geo.update_traces(textposition='outside', textfont=dict(color=colors['text_primary']))
+        fig_geo.update_layout(
+            paper_bgcolor=colors['chart_bg'],
+            plot_bgcolor=colors['chart_bg'],
+            font=dict(color=colors['text_primary']),
+            height=350,
+            showlegend=False,
+            xaxis_title="",
+            yaxis_title="",
+            xaxis=dict(showgrid=True, gridcolor=colors['border'])
+        )
+        st.plotly_chart(fig_geo, width='stretch', key="geo_dist")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class="section-header">
+                <div class="section-icon">🎯</div>
+                <h3 class="
