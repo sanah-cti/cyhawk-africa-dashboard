@@ -268,20 +268,33 @@ st.markdown(f"""
 }}
 
 .sidebar-section {{
-    background: {C['bg_secondary']};
-    border: 1px solid {C['border']};
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin-bottom: 1.5rem;
 }}
 
 .sidebar-title {{
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: {C['text']};
+    color: {C['text_muted']};
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid {C['border']};
+}}
+
+/* Filter Controls */
+.stSelectbox, .stMultiSelect {{
+    margin-bottom: 0.75rem;
+}}
+
+.stSelectbox label, .stMultiSelect label {{
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: {C['text']};
+    margin-bottom: 0.5rem;
 }}
 
 /* Buttons */
@@ -300,6 +313,15 @@ st.markdown(f"""
 .stButton > button:hover {{
     background: {CYHAWK_RED_DARK};
     box-shadow: 0 4px 12px rgba(196, 30, 58, 0.3);
+}}
+
+/* Disable chart dragging */
+.js-plotly-plot .plotly .modebar {{
+    display: none !important;
+}}
+
+.js-plotly-plot .plotly .cursor-crosshair {{
+    cursor: default !important;
 }}
 
 /* Mobile Responsive */
@@ -437,38 +459,53 @@ with col2:
 # SIDEBAR FILTERS
 # --------------------------------------------------
 with st.sidebar:
-    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-title">⏱ Time Period</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">TIME PERIOD</div>', unsafe_allow_html=True)
     
-    filter_mode = st.selectbox("", ["All Data", "Year", "Month", "Quarter"], label_visibility="collapsed")
+    filter_mode = st.selectbox(
+        "Filter Mode",
+        ["All Data", "Year", "Month", "Quarter"],
+        label_visibility="collapsed"
+    )
     
     filtered_df = df.copy()
     
     if filter_mode == "Year":
         years = sorted(df['year'].unique(), reverse=True)
-        selected_years = st.multiselect("Years", options=years, default=years)
+        selected_years = st.multiselect("Select Years", options=years, default=years)
         filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
     
     elif filter_mode == "Month":
-        selected_year = st.selectbox("Year", options=sorted(df['year'].unique(), reverse=True))
+        selected_year = st.selectbox("Select Year", options=sorted(df['year'].unique(), reverse=True))
         months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-        selected_months = st.multiselect("Months", options=months, default=months)
+        selected_months = st.multiselect("Select Months", options=months, default=months)
         filtered_df = filtered_df[(filtered_df['year'] == selected_year) & (filtered_df['month_name'].isin(selected_months))]
     
     elif filter_mode == "Quarter":
-        selected_year = st.selectbox("Year", options=sorted(df['year'].unique(), reverse=True))
+        selected_year = st.selectbox("Select Year", options=sorted(df['year'].unique(), reverse=True))
         quarters = sorted(df[df['year'] == selected_year]['quarter'].unique())
-        selected_quarters = st.multiselect("Quarters", options=quarters, default=quarters, format_func=lambda x: f"Q{x}")
+        selected_quarters = st.multiselect("Select Quarters", options=quarters, default=quarters, format_func=lambda x: f"Q{x}")
         filtered_df = filtered_df[(filtered_df['year'] == selected_year) & (filtered_df['quarter'].isin(selected_quarters))]
     
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div style="margin-top: 2rem;"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">FILTERS</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-title">🎯 Filters</div>', unsafe_allow_html=True)
+    selected_threat_types = st.multiselect(
+        "Threat Type",
+        options=sorted(df['threat_type'].unique()),
+        default=df['threat_type'].unique()
+    )
     
-    selected_threat_types = st.multiselect("Threat Type", options=sorted(df['threat_type'].unique()), default=df['threat_type'].unique())
-    selected_severity = st.multiselect("Severity", options=sorted(df['severity'].unique()), default=df['severity'].unique())
-    selected_sectors = st.multiselect("Sector", options=sorted(df['sector'].unique()), default=df['sector'].unique())
+    selected_severity = st.multiselect(
+        "Severity Level",
+        options=sorted(df['severity'].unique()),
+        default=df['severity'].unique()
+    )
+    
+    selected_sectors = st.multiselect(
+        "Industry Sector",
+        options=sorted(df['sector'].unique()),
+        default=df['sector'].unique()
+    )
     
     filtered_df = filtered_df[
         (filtered_df['threat_type'].isin(selected_threat_types)) &
@@ -476,13 +513,12 @@ with st.sidebar:
         (filtered_df['sector'].isin(selected_sectors))
     ]
     
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div style="margin-top: 2rem;"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">ANALYTICS</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-title">📊 Coverage</div>', unsafe_allow_html=True)
     coverage = (len(filtered_df) / len(df)) * 100 if len(df) > 0 else 0
-    st.metric("Active Filters", f"{coverage:.0f}%")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.metric("Data Coverage", f"{coverage:.1f}%")
+    st.metric("Records Shown", len(filtered_df))
 
 # --------------------------------------------------
 # MAIN CONTENT
@@ -553,10 +589,11 @@ with col1:
         plot_bgcolor='rgba(0,0,0,0)',
         font=dict(color=C['text'], size=12),
         xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False)
+        yaxis=dict(showgrid=False),
+        dragmode=False
     )
     fig.update_traces(marker_line_width=0)
-    st.plotly_chart(fig, use_container_width=True, key="threat_bar")
+    st.plotly_chart(fig, use_container_width=True, key="threat_bar", config={'displayModeBar': False, 'staticPlot': False})
 
 with col2:
     st.markdown(f"""
@@ -588,9 +625,10 @@ with col2:
         plot_bgcolor='rgba(0,0,0,0)',
         font=dict(color=C['text'], size=12),
         xaxis=dict(showgrid=False, title=""),
-        yaxis=dict(showgrid=False, title="")
+        yaxis=dict(showgrid=False, title=""),
+        dragmode=False
     )
-    st.plotly_chart(fig, use_container_width=True, key="severity_bar")
+    st.plotly_chart(fig, use_container_width=True, key="severity_bar", config={'displayModeBar': False})
 
 # Timeline Chart
 st.markdown(f"""
@@ -623,9 +661,10 @@ fig.update_layout(
     font=dict(color=C['text'], size=12),
     xaxis=dict(showgrid=False, title=""),
     yaxis=dict(showgrid=False, title=""),
-    hovermode='x unified'
+    hovermode='x unified',
+    dragmode=False
 )
-st.plotly_chart(fig, use_container_width=True, key="timeline")
+st.plotly_chart(fig, use_container_width=True, key="timeline", config={'displayModeBar': False})
 
 # Charts Row 2
 col1, col2 = st.columns(2)
@@ -660,9 +699,10 @@ with col1:
         plot_bgcolor='rgba(0,0,0,0)',
         font=dict(color=C['text'], size=12),
         xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False)
+        yaxis=dict(showgrid=False),
+        dragmode=False
     )
-    st.plotly_chart(fig, use_container_width=True, key="sector_bar")
+    st.plotly_chart(fig, use_container_width=True, key="sector_bar", config={'displayModeBar': False})
 
 with col2:
     st.markdown(f"""
@@ -694,18 +734,19 @@ with col2:
         plot_bgcolor='rgba(0,0,0,0)',
         font=dict(color=C['text'], size=12),
         xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False)
+        yaxis=dict(showgrid=False),
+        dragmode=False
     )
-    st.plotly_chart(fig, use_container_width=True, key="country_bar")
+    st.plotly_chart(fig, use_container_width=True, key="country_bar", config={'displayModeBar': False})
 
 st.markdown('</div>', unsafe_allow_html=True)
 
 # --------------------------------------------------
-# EXPORT & DATA MANAGEMENT
+# EXPORT (DATA UPLOAD REMOVED - BACKEND ONLY)
 # --------------------------------------------------
 with st.sidebar:
-    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-title">📥 Export</div>', unsafe_allow_html=True)
+    st.markdown('<div style="margin-top: 2rem;"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">EXPORT</div>', unsafe_allow_html=True)
     
     if st.button("Generate Report", use_container_width=True):
         csv = filtered_df.to_csv(index=False)
@@ -716,37 +757,14 @@ with st.sidebar:
             mime="text/csv",
             use_container_width=True
         )
-    st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-title">📊 Update Data</div>', unsafe_allow_html=True)
-    
-    uploaded_file = st.file_uploader("Upload CSV", type=['csv'], label_visibility="collapsed")
-    
-    if uploaded_file:
-        try:
-            new_df = pd.read_csv(uploaded_file)
-            required = ['date', 'actor', 'country', 'threat_type', 'sector', 'severity', 'source']
-            if all(col in new_df.columns for col in required):
-                os.makedirs('data', exist_ok=True)
-                new_df.to_csv('data/incidents.csv', index=False)
-                st.success("✅ Data updated")
-                if st.button("🔄 Refresh", use_container_width=True):
-                    st.cache_data.clear()
-                    st.rerun()
-            else:
-                st.error("❌ Invalid columns")
-        except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
+    st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)
+   
 # --------------------------------------------------
 # FOOTER
 # --------------------------------------------------
 st.markdown(f"""
 <div class="footer">
     <strong style="color:{C['accent']}">CyHawk Africa</strong> © {datetime.now().year} | Threat Intelligence Platform<br>
-    <small style="color:{C['text_muted']}">Enterprise-grade security intelligence for Africa | Data restricted to authorized partners</small>
 </div>
 """, unsafe_allow_html=True)
