@@ -666,15 +666,50 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True, key="timeline", config={'displayModeBar': False})
 
-# Charts Row 2
+# Charts Row 2 - Intelligence Analysis
 col1, col2 = st.columns(2)
 
 with col1:
     st.markdown(f"""
     <div class="chart-card">
         <div class="chart-header">
-            <h3 class="chart-title">Sector Impact</h3>
-            <span class="chart-badge">Top 10</span>
+            <h3 class="chart-title">Top Threat Actors</h3>
+            <span class="chart-badge">Most Active</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    actor_counts = filtered_df['actor'].value_counts().head(10).reset_index()
+    actor_counts.columns = ['Actor', 'Count']
+    
+    fig = px.bar(
+        actor_counts,
+        x='Count',
+        y='Actor',
+        orientation='h',
+        template=C["template"],
+        color='Count',
+        color_continuous_scale=[[0, C['card']], [1, C['accent']]]
+    )
+    fig.update_layout(
+        height=300,
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color=C['text'], size=12),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False),
+        dragmode=False
+    )
+    st.plotly_chart(fig, use_container_width=True, key="actor_bar", config={'displayModeBar': False})
+
+with col2:
+    st.markdown(f"""
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3 class="chart-title">Most Targeted Industries</h3>
+            <span class="chart-badge">Sector Analysis</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -702,14 +737,17 @@ with col1:
         yaxis=dict(showgrid=False),
         dragmode=False
     )
-    st.plotly_chart(fig, use_container_width=True, key="sector_bar", config={'displayModeBar': False})
+    st.plotly_chart(fig, use_container_width=True, key="industry_bar", config={'displayModeBar': False})
 
-with col2:
+# Charts Row 3 - Geographic & Threat Analysis
+col1, col2 = st.columns(2)
+
+with col1:
     st.markdown(f"""
     <div class="chart-card">
         <div class="chart-header">
-            <h3 class="chart-title">Geographic Distribution</h3>
-            <span class="chart-badge">By Country</span>
+            <h3 class="chart-title">Top Targeted Countries</h3>
+            <span class="chart-badge">Geographic Hotspots</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -739,6 +777,87 @@ with col2:
     )
     st.plotly_chart(fig, use_container_width=True, key="country_bar", config={'displayModeBar': False})
 
+with col2:
+    st.markdown(f"""
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3 class="chart-title">Top Ransomware Groups</h3>
+            <span class="chart-badge">Ransomware Activity</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Filter for ransomware threats
+    ransomware_df = filtered_df[filtered_df['threat_type'] == 'Ransomware']
+    if len(ransomware_df) > 0:
+        ransomware_actors = ransomware_df['actor'].value_counts().head(10).reset_index()
+        ransomware_actors.columns = ['Group', 'Count']
+        
+        fig = px.bar(
+            ransomware_actors,
+            x='Count',
+            y='Group',
+            orientation='h',
+            template=C["template"],
+            color='Count',
+            color_continuous_scale=[[0, C['card']], [1, C['danger']]]
+        )
+        fig.update_layout(
+            height=300,
+            margin=dict(l=0, r=0, t=0, b=0),
+            showlegend=False,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color=C['text'], size=12),
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False),
+            dragmode=False
+        )
+        st.plotly_chart(fig, use_container_width=True, key="ransomware_bar", config={'displayModeBar': False})
+    else:
+        st.info("No ransomware activity in selected period")
+
+# Charts Row 4 - Threat Type Details
+st.markdown(f"""
+<div class="chart-card">
+    <div class="chart-header">
+        <h3 class="chart-title">Top Threats</h3>
+        <span class="chart-badge">Threat Type Breakdown</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+threat_details = filtered_df.groupby(['threat_type', 'severity']).size().reset_index(name='count')
+
+fig = px.bar(
+    threat_details,
+    x='threat_type',
+    y='count',
+    color='severity',
+    template=C["template"],
+    color_discrete_map={'High': C['danger'], 'Medium': C['warning'], 'Low': C['success']},
+    barmode='stack'
+)
+fig.update_layout(
+    height=300,
+    margin=dict(l=0, r=0, t=0, b=0),
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
+    font=dict(color=C['text'], size=12),
+    xaxis=dict(showgrid=False, title="Threat Type"),
+    yaxis=dict(showgrid=False, title="Count"),
+    legend=dict(
+        title="Severity",
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ),
+    dragmode=False
+)
+st.plotly_chart(fig, use_container_width=True, key="threats_stacked", config={'displayModeBar': False})
+
 st.markdown('</div>', unsafe_allow_html=True)
 
 # --------------------------------------------------
@@ -759,7 +878,7 @@ with st.sidebar:
         )
     
     st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)
-   
+
 # --------------------------------------------------
 # FOOTER
 # --------------------------------------------------
