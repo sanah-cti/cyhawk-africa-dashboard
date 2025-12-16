@@ -412,7 +412,7 @@ with col1:
     high_severity = len(df[df['severity'] == 'High'])
     countries = df['country'].nunique()
     
-    st.markdown(f"""
+    header_html = f"""
         <div class="top-header">
             <div class="brand-section">
                 <div class="brand-logo-circle">C</div>
@@ -440,7 +440,8 @@ with col1:
                 </div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
 
 with col2:
     theme_icon = "🌙" if st.session_state.theme == 'dark' else "☀️"
@@ -592,7 +593,7 @@ current_time = datetime.now().strftime("%I:%M %p")
 success_color = colors['success']
 text_color = colors['text_secondary']
 
-st.markdown(f"""
+status_html = f"""
     <div class="status-bar">
         <div class="status-item">
             <div class="status-dot"></div>
@@ -607,7 +608,8 @@ st.markdown(f"""
             <span style="color: {text_color};">Last alert: 4 minutes ago</span>
         </div>
     </div>
-""", unsafe_allow_html=True)
+"""
+st.markdown(status_html, unsafe_allow_html=True)
 
 # Tabs Navigation
 st.markdown("""
