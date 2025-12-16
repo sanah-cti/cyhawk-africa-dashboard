@@ -1,13 +1,11 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime, timedelta
-import random
-import io
-import os
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime
 
-# -------------------------------------------------
-# PAGE CONFIG (ICON FROM ASSETS)
-# -------------------------------------------------
+# --------------------------------------------------
+# PAGE CONFIG
+# --------------------------------------------------
 st.set_page_config(
     page_title="CyHawk Africa – Cyber Threat Intelligence",
     page_icon="assets/favicon.ico",
@@ -15,283 +13,163 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# -------------------------------------------------
-# SESSION STATE
-# -------------------------------------------------
+# --------------------------------------------------
+# THEME STATE
+# --------------------------------------------------
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
-
-if "view_mode" not in st.session_state:
-    st.session_state.view_mode = "Public"
 
 def toggle_theme():
     st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
 
-# -------------------------------------------------
-# COLORS
-# -------------------------------------------------
+# --------------------------------------------------
+# BRAND COLORS
+# --------------------------------------------------
 BRAND_RED = "#B91C1C"
+DARK_BG = "#0a0e27"
+DARK_CARD = "#141b3d"
+DARK_BORDER = "#1e2847"
 
-def theme_colors():
+def theme():
     if st.session_state.theme == "dark":
         return {
-            "bg": "#0a0e27",
-            "card": "#141b3d",
-            "border": "#1e2847",
-            "text": "#ffffff",
-            "muted": "#9aa0c7",
-            "plotly": "plotly_dark"
+            "bg": DARK_BG,
+            "card": DARK_CARD,
+            "border": DARK_BORDER,
+            "text": "#FFFFFF",
+            "muted": "#9aa3c7",
+            "template": "plotly_dark"
         }
     return {
         "bg": "#f5f7fa",
         "card": "#ffffff",
         "border": "#e5e7eb",
-        "text": "#1a1d29",
+        "text": "#111827",
         "muted": "#6b7280",
-        "plotly": "plotly_white"
+        "template": "plotly_white"
     }
 
-C = theme_colors()
+C = theme()
 
-# -------------------------------------------------
+# --------------------------------------------------
 # CSS
-# -------------------------------------------------
-st.markdown(
-    f"""
+# --------------------------------------------------
+st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-* {{ font-family: Inter, sans-serif; }}
-.stApp {{ background-color: {C["bg"]}; }}
-header, footer, #MainMenu {{ display: none; }}
+.main {{ background-color: {C['bg']}; }}
+.stApp {{ background: {C['bg']}; }}
+#MainMenu, footer, header {{ visibility: hidden; }}
 
 .top-header {{
-    background: {C["card"]};
-    border-bottom: 1px solid {C["border"]};
+    background: {C['card']};
+    border-bottom: 1px solid {C['border']};
     padding: 1.5rem 2rem;
     margin: -6rem -6rem 2rem -6rem;
     display: flex;
-    flex-wrap: wrap;
     justify-content: space-between;
-    gap: 1.5rem;
-}}
-
-.brand {{
-    display: flex;
     align-items: center;
-    gap: 1rem;
 }}
 
-.brand img {{
-    height: 56px;
-}}
-
-.brand h1 {{
-    margin: 0;
-    color: {C["text"]};
-    font-size: 1.6rem;
-}}
-
-.brand p {{
-    margin: 0;
-    color: {C["muted"]};
-    font-size: 0.85rem;
-}}
-
-.stats {{
-    display: flex;
-    gap: 2rem;
-    flex-wrap: wrap;
-}}
-
-.stat {{
-    text-align: center;
-}}
-
-.stat strong {{
-    color: {BRAND_RED};
-    font-size: 1.6rem;
-}}
-
-.card {{
-    background: {C["card"]};
-    border: 1px solid {C["border"]};
+.section-card {{
+    background: {C['card']};
+    border: 1px solid {C['border']};
     border-radius: 12px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
 }}
-
-[data-testid="stSidebar"] {{
-    background: {C["card"]};
-    border-right: 1px solid {C["border"]};
-}}
 </style>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
-# -------------------------------------------------
-# SAMPLE DATA
-# -------------------------------------------------
-def generate_sample_data():
-    actors = ["Keymous Plus", "iFalcon", "APT28", "Anonymous Sudan", "DarkSide"]
-    countries = ["Nigeria", "South Africa", "Kenya", "Egypt", "Ghana"]
-    threats = ["DDoS", "Ransomware", "Phishing", "Data Breach"]
-    sectors = ["Finance", "Government", "Telecoms", "Health"]
-    severities = ["High", "Medium", "Low"]
-
-    rows = []
-    start = datetime(2025, 1, 1)
-
-    for _ in range(200):
-        rows.append({
-            "date": start + timedelta(days=random.randint(0, 240)),
-            "actor": random.choice(actors),
-            "country": random.choice(countries),
-            "threat_type": random.choice(threats),
-            "sector": random.choice(sectors),
-            "severity": random.choice(severities),
-            "source": "OSINT"
-        })
-
-    return pd.DataFrame(rows)
-
-# -------------------------------------------------
-# LOAD DATA
-# -------------------------------------------------
-@st.cache_data(ttl=300)
-def load_data():
-    path = "data/incidents.csv"
-    if os.path.exists(path):
-        df = pd.read_csv(path)
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
-        df = df.dropna(subset=["date"])
-    else:
-        df = generate_sample_data()
-
-    df["year"] = df["date"].dt.year
-    df["month"] = df["date"].dt.strftime("%B")
-    df["quarter"] = df["date"].dt.quarter
-    return df
-
-df = load_data()
-
-# -------------------------------------------------
+# --------------------------------------------------
 # HEADER
-# -------------------------------------------------
-st.markdown(
-    f"""
-<div class="top-header">
-  <div class="brand">
-    <a href="https://cyhawk-africa.com" target="_blank">
-      <img src="assets/cyhawk_logo.png">
-    </a>
-    <div>
-      <h1>CyHawk Africa</h1>
-      <p>Cyber Threat Intelligence Platform</p>
-    </div>
-  </div>
+# --------------------------------------------------
+col1, col2 = st.columns([3, 1])
 
-  <div class="stats">
-    <div class="stat"><strong>{len(df)}</strong><br>Threats</div>
-    <div class="stat"><strong>{df.actor.nunique()}</strong><br>Actors</div>
-    <div class="stat"><strong>{df.country.nunique()}</strong><br>Countries</div>
-    <div class="stat"><strong>{len(df[df.severity=="High"])}</strong><br>High Risk</div>
-  </div>
-</div>
-""",
-    unsafe_allow_html=True,
+with col1:
+    st.markdown(f"""
+    <div class="top-header">
+        <div style="display:flex;align-items:center;gap:1rem">
+            <img src="assets/cyhawk_logo.png" width="55">
+            <div>
+                <h2 style="margin:0;color:{C['text']}">CyHawk Africa</h2>
+                <p style="margin:0;color:{C['muted']}">Cyber Threat Intelligence Platform</p>
+            </div>
+        </div>
+        <div style="display:flex;gap:2rem">
+            <div><strong style="color:{BRAND_RED}">Live</strong><br><small>Monitoring</small></div>
+            <div><strong style="color:{BRAND_RED}">Africa</strong><br><small>Coverage</small></div>
+            <div><strong style="color:{BRAND_RED}">24/7</strong><br><small>Visibility</small></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col2:
+    if st.button("🌙" if st.session_state.theme == "dark" else "☀️"):
+        toggle_theme()
+        st.rerun()
+
+# --------------------------------------------------
+# NOTICE (IMPORTANT)
+# --------------------------------------------------
+st.info(
+    "This public dashboard shows **aggregated and non-sensitive visual insights only**. "
+    "Operational threat intelligence data is restricted to authorized partners."
 )
 
-# -------------------------------------------------
-# SIDEBAR
-# -------------------------------------------------
-with st.sidebar:
-    st.button("Toggle Theme", on_click=toggle_theme)
-
-    st.markdown("### Access Mode")
-    st.session_state.view_mode = st.radio(
-        "",
-        ["Public", "Internal"],
-        index=0
-    )
-
-    st.markdown("### Filters")
-    years = sorted(df.year.unique(), reverse=True)
-    selected_years = st.multiselect("Year", years, years)
-
-    df_f = df[df.year.isin(selected_years)]
-
-# -------------------------------------------------
-# VISUALS
-# -------------------------------------------------
-import plotly.express as px
-
+# --------------------------------------------------
+# SYNTHETIC / AGGREGATED VISUALS ONLY
+# --------------------------------------------------
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     fig = px.pie(
-        df_f,
-        names="threat_type",
-        title="Threat Types",
-        template=C["plotly"]
+        names=["Ransomware", "Phishing", "DDoS", "Malware"],
+        values=[35, 25, 20, 20],
+        hole=0.5,
+        template=C["template"]
     )
+    fig.update_layout(title="Threat Categories (Aggregated)")
     st.plotly_chart(fig, use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with col2:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     fig = px.bar(
-        df_f.groupby("country").size().reset_index(name="count"),
-        x="count",
-        y="country",
-        orientation="h",
-        title="Top Targeted Countries",
-        template=C["plotly"]
+        x=["Finance", "Government", "Telecoms", "Healthcare"],
+        y=[40, 30, 20, 10],
+        template=C["template"]
     )
+    fig.update_layout(title="Most Targeted Sectors (Index View)")
     st.plotly_chart(fig, use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# -------------------------------------------------
-# DATA TABLE
-# -------------------------------------------------
-st.markdown('<div class="card">', unsafe_allow_html=True)
+# --------------------------------------------------
+# TIMELINE (NO DATA)
+# --------------------------------------------------
+st.markdown('<div class="section-card">', unsafe_allow_html=True)
 
-if st.session_state.view_mode == "Internal":
-    st.dataframe(df_f, use_container_width=True)
-else:
-    st.dataframe(
-        df_f.drop(columns=["actor", "source"], errors="ignore"),
-        use_container_width=True
-    )
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# -------------------------------------------------
-# EXPORT
-# -------------------------------------------------
-def export_csv():
-    buf = io.StringIO()
-    df_f.to_csv(buf, index=False)
-    return buf.getvalue()
-
-with st.sidebar:
-    st.markdown("### Export")
-    st.download_button(
-        "Download CSV",
-        export_csv(),
-        "cyhawk_report.csv",
-        "text/csv"
-    )
-
-# -------------------------------------------------
-# FOOTER
-# -------------------------------------------------
-st.markdown(
-    f"""
-<p style="text-align:center;color:{C["muted"]};font-size:0.8rem;">
-CyHawk Africa | Showing {len(df_f)} of {len(df)} records | Updated {datetime.now().strftime("%Y-%m-%d %H:%M")}
-</p>
-""",
-    unsafe_allow_html=True,
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    y=[12, 18, 14, 22, 19, 10, 8],
+    mode="lines",
+    fill="tozeroy"
+))
+fig.update_layout(
+    title="Threat Activity Index (Abstracted)",
+    template=C["template"],
+    height=300
 )
+st.plotly_chart(fig, use_container_width=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# --------------------------------------------------
+# FOOTER
+# --------------------------------------------------
+st.markdown(f"""
+<div style="text-align:center;color:{C['muted']};padding:2rem;border-top:1px solid {C['border']}">
+CyHawk Africa © {datetime.now().year} — Public Intelligence Interface
+</div>
+""", unsafe_allow_html=True)
