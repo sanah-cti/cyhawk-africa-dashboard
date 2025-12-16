@@ -247,3 +247,338 @@ date,actor,country,threat_type,sector,severity,source
 2025-10-31,kazu,Kenya,Database,Health,Medium,Dark Web
 2025-10-31,kazu,Kenya,Database,Government,Medium,Dark Web
 2025-10-31,Incransom,Algeria,Ransomware,Transportation,High,Leak Site
+2025-11-04,Spirigatito,Ivory Coast,Database,E-commerce,Critical,Dark Web
+2025-11-06,Stormous,Morocco,Ransomware,Retail,High,Leak Site
+2025-11-07,Clop,Zambia,Ransomware,Financial Services,Critical,Leak Site
+2025-11-07,Clop,Egypt,Ransomware,Energy,Critical,Leak Site
+2025-11-08,anisanas2,Morocco,Database,Government,Critical,Dark Web
+2025-11-09,Nightspire,Nigeria,Ransomware,Financial Services,Critical,Leak Site
+2025-11-09,Nightspire,South Africa,Ransomware,Government,High,Leak Site
+2025-11-10,Spacebears,Morocco,Database,Business,Critical,Leak Site
+2025-11-10,wizard,Nigeria,Database,Education,Critical,Dark Web
+2025-11-12,FireWire,Tunisia,DDOS,Education,High,Telegram
+2025-11-12,FireWire,Tunisia,DDOS,Education,High,Telegram
+2025-11-12,FireWire,Tunisia,DDOS,Education,High,Telegram
+2025-11-12,FireWire,Tunisia,DDOS,Education,High,Telegram
+2025-11-13,FireWire,Tunisia,DDOS,Education,High,Telegram
+2025-11-13,FireWire,Tunisia,DDOS,Education,High,Telegram
+2025-11-13,FireWire,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Clop,Egypt,Ransomware,Construction,High,Leak Site
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Health,Critical,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Education,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Education,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Agriculture,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Telecommunications,Critical,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Telecommunications,Critical,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Telecommunications,Critical,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Morocco,DDOS,Financial Services,Critical,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Telecommunications,Critical,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-13,Keymous Plus,Tunisia,DDOS,Government,High,Telegram
+2025-11-17,xNov,Egypt,Database,NGO,Critical,Dark Web
+2025-11-20,FireWire,Tunisia,Database,Government,Critical,Telegram
+2025-11-23,crazyboy68,Nigeria,Database,Health,Critical,Dark Web
+2025-11-24,ashleywood2022,South Africa,Database,Education,Critical,Dark Web
+2025-11-24,xNov,Morocco,Database,Technology,Critical,Dark Web
+2025-11-25,Nightspire,Egypt,Ransomware,Manufacturing,High,Leak Site
+2025-11-25,wizard,Nigeria,Database,Financial Services,Critical,Dark Web
+2025-11-25,dju,Niger,Database,Financial Services,Critical,Dark Web
+2025-11-25,888,Tunisia,Source Code,Technology,Critical,Dark Web
+2025-11-26,Qilin,Egypt,Ransomware,Real Estate,High,Leak Site
+2025-11-26,Benzona,Ivory Coast,Ransomware,NGO,High,Leak Site
+2025-11-29,Sylhet Gang,Morocco,DDOS,Government,High,Telegram
+2025-11-29,Sylhet Gang,Morocco,DDOS,Aviation,Critical,Telegram
+2025-04-02,Ghudra,Nigeria,Access,Government,Critical,Dark Web
+2025-04-02,Ghudra,Nigeria,Access,Government,Critical,Dark Web
+2025-04-03,MrCarrot,South Africa,Access,Other,Critical,Dark Web
+2025-04-04,KILLUAX,Egypt,Database,Telecommunication,Critical,Dark Web
+2025-04-04,oblivion666,Senegal,Access,Government,Critical,Dark Web
+2025-04-04,DragonForce,Egypt,Ransomware,Other,High,Leak Site
+2025-04-08,Sythe,Nigeria,Database,Education,Critical,Dark Web
+2025-04-08,Jabaroot,Morocco,Database,Government,Critical,Dark Web
+2025-04-08,Crypto24,Egypt,Ransomware,Other,High,Leak Site
+2025-04-09,0xrau1,Algeria,Database,Other,Critical,Dark Web
+2025-04-09,PhantomAtlas,Algeria,Database,Telecommunication,Critical,Telegram
+2025-04-09,PhantomAtlas,Algeria,Database,Government,Critical,Telegram
+2025-04-10,vebxpert,South Africa,Access,Other,Critical,Dark Web
+2025-04-13,MisterSam,Nigeria,Access,Government,Critical,Dark Web
+2025-04-13,v1rusno1r,Algeria,Database,Government,Critical,Dark Web
+2025-04-17,Unknown,South Africa,Access,Other,Critical,Telegram
+2025-04-20,Devman,South Africa,Ransomware,Other,High,Leak Site
+2025-04-23,Gunra,Egypt,Ransomware,Health,Critical,Leak Site
+2025-04-29,wht,Zimbabwe,Database,Financial Service,Critical,Dark Web
+2025-01-06,RansomHub,Kenya,Ransomware,Health,Critical,Leak Site
+2025-01-07,Funksec,Egypt,Ransomware,Government,Critical,Leak Site
+2025-01-08,Anonymous Sudan,Central Africa,DDOS,Government,High,Telegram
+2025-01-08,Funksec,Egypt,Ransomware,Government,Critical,Leak Site
+2025-01-09,Funksec,Egypt,Ransomware,Government,Critical,Leak Site
+2025-01-09,Banshe,South Africa,,Retail,,
+2025-01-11,Funksec,Morocco,Ransomware,Technology,Critical,Leak Site
+2025-01-12,RansomHub,Nigeria,Ransomware,Oil and Gas,High,Leak Site
+2025-01-13,Rey,Rwanda,,Education,,
+2025-01-14,Spacebears,Egypt,Ransomware,Hospitality,High,Leak Site
+2025-01-15,Funksec,Egypt,Ransomware,Government,Critical,Leak Site
+2025-01-16,Anonymous Sudan,Libya,DDOS,Government,High,Telegram
+2025-01-18,LulzSec Black,South Africa,DDOS,Mining,High,Telegram
+2025-01-21,Funksec,Algeria,Ransomware,Government,Critical,Leak Site
+2025-01-21,Spacebears,Algeria,Ransomware,Health,Critical,Leak Site
+2025-01-24,Gdlockersec,Morocco,Ransomware,Education,Critical,Leak Site
+2025-01-24,Gdlockersec,Nigeria,Ransomware,Government,Critical,Leak Site
+2025-01-26,Gdlockersec,Egypt,Ransomware,Education,Critical,Leak Site
+2025-01-26,Funksec,Nigeria,Ransomware,Education,Critical,Leak Site
+2025-01-27,Funksec,Uganda,Ransomware,Technology,Critical,Leak Site
+2025-01-27,Babuk,Kenya,Ransomware,Education,Critical,Leak Site
+2025-01-27,Babuk,Zambia,Ransomware,Government,Critical,Leak Site
+2025-01-31,Wolf Cyber Army,Zimbabwe,DDOS,Government,High,Telegram
+2025-01-31,Dragon RaaS,Libya,DDOS,Government,High,Telegram
+2025-07-01,httpd,Nigeria,Database,Financial Services,Critical,Dark Web
+2025-07-02,mecrobyte,Tunisia,Access,Government,Critical,Dark Web
+2025-07-02,mecrobyte,Tunisia,Access,Technology,Critical,Dark Web
+2025-07-04,dumpster,South Africa,Database,Recruitment,Critical,Dark Web
+2025-07-04,sanji_shi5,Algeria,Access,Government,Critical,Dark Web
+2025-07-05,sanji_shi5,Algeria,Database,Telecommunications,Critical,Dark Web
+2025-07-07,doxeur23azi,Senegal,Database,Government,Critical,Dark Web
+2025-07-07,dcadcwacd,Ethiopia,Access,Government,Critical,Dark Web
+2025-07-07,b4bayega,Morocco,Database,Government,Critical,Dark Web
+2025-07-07,evil_byte_officiel,Morocco,Database,Telecommunications,Critical,Dark Web
+2025-07-07,mecrobyte,Tunisia,Database,Tourism,Critical,Dark Web
+2025-07-07,dayzer0day,Egypt,Database,Education,Critical,Dark Web
+2025-07-09,d4rk4rmy,South Africa,Ransomware,Mining,Critical,Leak Site
+2025-07-09,evil_byte_officiel,Morocco,Database,Construction,Critical,Dark Web
+2025-07-09,mecrobyte,Morocco,Database,Agriculture,Critical,Dark Web
+2025-07-11,rl00,Morocco,Database,Technology,Critical,Dark Web
+2025-07-11,helwan,Egypt,Database,Education,Critical,Dark Web
+2025-07-11,darkMods,Morocco,Vulnerability,Financial Services,Critical,Dark Web
+2025-07-13,Devman,Egypt,Ransomware,Government,Critical,Leak Site
+2025-07-13,Nightspire,Tanzania,Ransomware,NGO,High,Leak Site
+2025-07-15,Lynx,Kenya,Ransomware,Technology,Critical,Leak Site
+2025-07-16,httpd,Nigeria,Access,Financial Services,Critical,Dark Web
+2025-07-18,kazu,Mauritania,Database,Government,Critical,Dark Web
+2025-07-19,jokeir 07x,Nigeria,Database,Transport,Critical,Telegram
+2025-07-19,jokeir 07x,Nigeria,Database,Government,Critical,Telegram
+2025-07-19,jokeir 07x,Nigeria,Database,Health,Critical,Telegram
+2025-07-20,bxxxx1,Morocco,Database,Education,Critical,Dark Web
+2025-07-24,dark hell 07x,Ghana,Database,Law Enforcement,Critical,Telegram
+2025-07-24,dark hell 07x,Ghana,Database,Telecommunications,Critical,Telegram
+2025-07-24,dark hell 07x,Ghana,Database,Education,Critical,Telegram
+2025-07-24,dark hell 07x,Ghana,Database,Government,Critical,Telegram
+2025-07-24,dark hell 07x,Tunisia,Database,Financial Services,Critical,Telegram
+2025-07-24,dark hell 07x,Tunisia,Database,Financial Services,Critical,Telegram
+2025-07-24,dark hell 07x,Tunisia,Database,Financial Services,Critical,Telegram
+2025-07-24,dark hell 07x,Tunisia,Database,Financial Services,Critical,Telegram
+2025-07-25,ICap0ne,Egypt,Database,Education,Critical,Dark Web
+2025-07-25,ICap0ne,Morocco,Database,Education,Critical,Dark Web
+2025-07-28,dark hell 07x,Tunisia,Database,Financial Services,Critical,Telegram
+2025-07-28,hider_nex,Morocco,Database,Financial Services,Critical,Telegram
+2025-07-28,hider_nex,Morocco,Database,Education,Critical,Telegram
+2025-07-28,hider_nex,Morocco,Database,Financial Services,Critical,Telegram
+2025-07-30,hider_nex,Morocco,DDOS,Financial Services,Critical,Telegram
+2025-07-30,hider_nex,Morocco,DDOS,Financial Services,Critical,Telegram
+2025-07-30,hider_nex,Morocco,DDOS,Media,High,Telegram
+2025-07-30,Z1ON,Burkina Faso,Access,Government,Critical,Dark Web
+2025-07-30,Tunisian Maskers,Morocco,Database,Education,Critical,Telegram
+2025-07-31,express,South Africa,Database,Government,Critical,Dark Web
+2025-07-31,jokeir 07x,Tunisia,Credential,Health,Critical,Dark Web
+2025-07-31,jokeir 07x,Tunisia,Database,Unknown,Critical,Telegram
+2025-07-31,jokeir 07x,Tunisia,Ransomware,Technology,Critical,Leak Site
+2025-06-02,b4bayega,Morocco,Database,Sport,Critical,Dark Web
+2025-06-02,jabaroot,Morocco,Database,Government,Critical,Dark Web
+2025-06-02,el_farado,Nigeria,Database,Financial Services,Critical,Dark Web
+2025-06-02,icikevin,Nigeria,Database,Financial Services,Critical,Dark Web
+2025-06-02,icikevin,Nigeria,Database,Financial Services,Critical,Dark Web
+2025-06-03,b4bayega,Morocco,Database,Government,Critical,Dark Web
+2025-06-03,b4bayega,Morocco,Database,Government,Critical,Dark Web
+2025-06-03,b4bayega,Morocco,Database,Government,Critical,Dark Web
+2025-06-03,kill9,Algeria,Access,Aviation,Critical,Dark Web
+2025-06-06,ForzaMilan,Morocco,Vulnerability,Education,Critical,Dark Web
+2025-06-07,Nightspire,South Africa,Ransomware,Government,Critical,Leak Site
+2025-06-08,TajineSec,Morocco,Database,Financial Services,Critical,Dark Web
+2025-06-08,keymous,Egypt,Database,Government,Critical,Dark Web
+2025-06-08,0x0day,Ghana,Database,Insurance,Critical,Dark Web
+2025-06-09,Phantom Atlas,Algeria,Database,Telecommunications,Critical,Dark Web
+2025-06-11,Zabaniah,Nigeria,Database,Government,Critical,Dark Web
+2025-06-13,Phantom Atlas,Algeria,Database,Financial Services,Critical,Dark Web
+2025-06-16,bxxxx1,Egypt,Database,Aviation,Critical,Dark Web
+2025-06-16,XrOOT01,Morocco,Access,Financial Services,Critical,Dark Web
+2025-06-16,XrOOT01,Morocco,Access,Government,Critical,Dark Web
+2025-06-16,Jack_back,Egypt,Database,Telecommunications,Critical,Dark Web
+2025-06-17,b4bayega,Morocco,Database,Government,Critical,Dark Web
+2025-06-17,bxxxx1,Morocco,Access,Government,Critical,Dark Web
+2025-06-18,mrdump,Algeria,Database,Government,Critical,Dark Web
+2025-06-18,mrdump,Algeria,Database,Government,Critical,Dark Web
+2025-06-19,dedale,Egypt,Database,Maritime,Critical,Dark Web
+2025-06-21,mrdump,Algeria,Access,Government,Critical,Dark Web
+2025-06-21,mrdump,Tunisia,Database,Military,Critical,Dark Web
+2025-06-21,gesss,South Africa,Database,Health,Critical,Dark Web
+2025-06-21,SolomonStaff,Algeria,Database,Government,Critical,Dark Web
+2025-06-22,dedale,Algeria,Database,Government,Critical,Dark Web
+2025-06-22,dedale,Algeria,Database,Other,Critical,Dark Web
+2025-06-22,dedale,Nigeria,Database,Government,Critical,Dark Web
+2025-06-24,governer,Algeria,Access,Government,Critical,Dark Web
+2025-06-24,governer,Kenya,Access,Government,Critical,Dark Web
+2025-06-24,governer,Malawi,Access,Government,Critical,Dark Web
+2025-06-24,governer,Tanzania,Access,Government,Critical,Dark Web
+2025-06-24,governer,Egypt,Access,Government,Critical,Dark Web
+2025-06-24,darksidebases,Angola,Access,Government,Critical,Dark Web
+2025-06-24,retr0,Egypt,Database,Government,Critical,Dark Web
+2025-06-26,kickingpigs,Algeria,Database,Government,Critical,Dark Web
+2025-06-26,kickingpigs,Algeria,Database,Government,Critical,Dark Web
+2025-06-26,kickingpigs,Algeria,Database,Education,Critical,Dark Web
+2025-06-27,0xblade,Nigeria,Database,Other,Critical,Dark Web
+2025-06-30,darkMods,Morocco,Database,Insurance,Critical,Dark Web
+2025-06-30,ScribeofBabylon,Nigeria,Database,Telecommunications,Critical,Dark Web
+2025-06-30,kalosha319,Egypt,Database,Education,Critical,Dark Web
+2025-06-30,darkMods,Algeria,Database,Government,Critical,Dark Web
+2025-06-30,darkMods,Morocco,Database,Health,Critical,Dark Web
+2025-06-30,Phantom Atlas,Algeria,Defacement,Telecommunications,Medium,Telegram
+2025-03-01,SKYZZXPLOIT,Nigeria,Defacement,Technology,Medium,Telegram
+2025-03-01,DataSec,Algeria,Access,Government,Critical,Dark Web
+2025-03-01,DataSec,Egypt,Access,Government,Critical,Dark Web
+2025-03-02,KillSec,Nigeria,Ransomware,Other,High,Leak Site
+2025-03-02,Play,Botswana,Ransomware,Technology,Critical,Leak Site
+2025-03-02,DataSec,Tanzania,Access,Government,Critical,Dark Web
+2025-03-03,Arcusmedia,South Africa,Ransomware,Other,High,Leak Site
+2025-03-05,0x,Nigeria,Defacement,Government,Medium,Telegram
+2025-03-05,MisterSam,Nigeria,Access,Government,Critical,Dark Web
+2025-03-05,sentap,Algeria,Access,Other,Critical,Dark Web
+2025-03-07,Lynx,South Africa,Ransomware,Other,High,Leak Site
+2025-03-09,bib0rn,South Africa,Database,E-Commerce,Critical,Dark Web
+2025-03-09,Jumbojet,Ghana,Database,Education,Critical,Dark Web
+2025-03-10,Kobal,Nigeria,Database,Financial Service,Critical,Dark Web
+2025-03-11,Funksec,Egypt,Ransomware,Education,Critical,Leak Site
+2025-03-11,A3g00n,Egypt,Database,Other,Critical,Dark Web
+2025-03-14,jmn,Egypt,Database,Other,Critical,Dark Web
+2025-03-14,DieNet,Egypt,DDoS,Telecommunication,High,Telegram
+2025-03-17,brutal,Angola,Access,Government,Critical,Dark Web
+2025-03-18,brutal,South Africa,Access,Government,Critical,Dark Web
+2025-03-19,Altsions,Angola,Access,Government,Critical,Dark Web
+2025-03-21,Dragon RaaS,Nigeria,Access,Education,Critical,Dark Web
+2025-03-22,Sarcoma,South Africa,Ransomware,Other,High,Leak Site
+2025-03-24,Ghudra,Rwanda,Database,Government,Critical,Dark Web
+2025-03-24,NightSpire,Egypt,Ransomware,Health,Critical,Leak Site
+2025-03-26,Ghudra,Burkina Faso,Access,Government,Critical,Dark Web
+2025-03-26,prx,South Africa,Access,Other,Critical,Dark Web
+2025-03-30,kazu,Morocco,Access,Education,Critical,Dark Web
+2025-03-31,Babuk,Rwanda,Ransomware,Health,Critical,Leak Site
+2025-05-01,Devman,South Africa,Ransomware,Other,High,Leak Site
+2025-05-01,Devman,South Africa,Ransomware,Technology,Critical,Leak Site
+2025-05-01,J27DN,Egypt,Database,Government,Critical,Dark Web
+2025-05-01,Unknown,South Africa,Defacement,Education,Medium,Telegram
+2025-05-02,Devman,South Africa,Ransomware,Other,High,Leak Site
+2025-05-02,J27DN,Egypt,Database,Government,Critical,Dark Web
+2025-05-05,Libyantest,Tunisia,Database,Government,Critical,Dark Web
+2025-05-06,Nightspire,Egypt,Ransomware,Finance,Critical,Leak Site
+2025-05-06,Unknown,South Africa,Defacement,Government,Medium,Telegram
+2025-05-10,Devman,South Africa,Ransomware,Other,High,Leak Site
+2025-05-11,Unknown,South Africa,Defacement,Other,Medium,Telegram
+2025-05-11,El_farado,South Africa,Database,Government,Critical,Dark Web
+2025-05-13,Team1722,Cote D'Ivoire,Defacement,Other,Medium,Telegram
+2025-05-14,desoxy,Nigeria,Database,Government,Critical,Dark Web
+2025-05-14,Stephanie,Malawi,Access,Government,Critical,Dark Web
+2025-05-16,B4baYega,Morocco,Database,Government,Critical,Dark Web
+2025-05-16,Incransom,South Africa,Ransomware,Aviation,Critical,Leak Site
+2025-05-19,Jack_back,Mauritania,Database,Finance,Critical,Dark Web
+2025-05-19,Devman,Kenya,Ransomware,Government,Critical,Leak Site
+2025-05-23,Devman,South Africa,Ransomware,Technology,Critical,Leak Site
+2025-05-26,kill9_x,Mauritania,Database,Government,Critical,Dark Web
+2025-05-26,Datacarry,South Africa,Ransomware,Retail,High,Leak Site
+2025-05-27,Everest,South Africa,Ransomware,Health,Critical,Leak Site
+2025-05-29,B4baYega,Morocco,Database,Government,Critical,Dark Web
+2025-05-31,cache,Togo,Database,Technology,Critical,Dark Web
+2025-02-01,CYBER TEAM,Angola,Defacement,Government,Medium,Telegram
+2025-02-03,Fog,Egypt,Ransomware,Technology,Critical,Leak Site
+2025-02-03,wa0,Egypt,Database,Education,Critical,Dark Web
+2025-02-03,Pylades,Kenya,Access,Government,Critical,Dark Web
+2025-02-04,Thaihub,Zimbabwe,Database,Telecommunications,Critical,Dark Web
+2025-02-05,Monlay,Nigeria,Database,Government,Critical,Dark Web
+2025-02-06,wa0,Egypt,Database,Education,Critical,Dark Web
+2025-02-06,Rachel Hunter,Nigeria,Database,Education,Critical,Dark Web
+2025-02-06,Thaihub,Zimbabwe,Database,Financial Service,Critical,Dark Web
+2025-02-07,ZXCerberus,Egypt,Access,Government,Critical,Dark Web
+2025-02-07,R57,Egypt,Database,E-commerce,Critical,Dark Web
+2025-02-07,./NONSEC7,Nigeria,Defacement,Technology,Medium,Telegram
+2025-02-08,SKYZZXPLOIT,Nigeria,Defacement,Agriculture,Medium,Telegram
+2025-02-08,SKYZZXPLOIT,Nigeria,Defacement,Oil and Gas,Medium,Telegram
+2025-02-08,SKYZZXPLOIT,Nigeria,Defacement,Other,Medium,Telegram
+2025-02-08,SKYZZXPLOIT,Nigeria,Defacement,Other,Medium,Telegram
+2025-02-08,SKYZZXPLOIT,Nigeria,Defacement,Other,Medium,Telegram
+2025-02-08,SKYZZXPLOIT,Nigeria,Defacement,Other,Medium,Telegram
+2025-02-08,brutal,Angola,Access,Other,Critical,Dark Web
+2025-02-09,./XLVER,Zimbabwe,Defacement,Other,Medium,Telegram
+2025-02-09,Arikos,Ghana,Database,Telecommunications,Critical,
+2025-02-09,Empire,South Africa,Database,Technology,Critical,Dark Web
+2025-02-09,Belesn Group,East Africa,Access,Aviation,Critical,
+2025-02-10,Belesn Group,North Africa,Access,Manufacturing,Critical,
+2025-02-10,termit,Egypt,Database,Other,Critical,Dark Web
+2025-02-12,Al-Sheikh,South Africa,Database,Other,Critical,Dark Web
+2025-02-12,Flocker,Zambia,Ransomware,Government,Critical,Leak Site
+2025-02-12,RansomHub,South Africa,Ransomware,Government,Critical,Leak Site
+2025-02-12,RansomHub,Morocco,Ransomware,Government,Critical,Leak Site
+2025-02-14,jok3r369,South Africa,Access,Other,Critical,Dark Web
+2025-02-15,GHNA,Unknown,Access,Telecommunications,Critical,Dark Web
+2025-02-20,Dark Storm,Central Africa,DDOS,Financial Service,Critical,Telegram
+2025-02-21,Akira,Namibia,Ransomware,Telecommunications,Critical,Leak Site
+2025-02-22,hacker_levup,Morocco,Database,Government,Critical,Dark Web
+2025-02-23,Killsec,Egypt,Ransomware,Other,Critical,Leak Site
+2025-02-23,Killsec,Ghana,Ransomware,Other,Critical,Leak Site
+2025-02-23,EDRVendor,Angola,Access,Government,Critical,Dark Web
+2025-02-23,EDRVendor,Morocco,Access,Government,Critical,Dark Web
+2025-02-24,Counter,Nigeria,Database,Other,Critical,Dark Web
+2025-02-26,Empire,Egypt,Database,E-commerce,Critical,Dark Web
+2025-02-27,Negat1ve,Ghana,Defacement,Government,Medium,Telegram
+2025-02-28,MIYAK000,Mozambique,Access,Government,Critical,Dark Web
+2025-02-28,AfricanGoddess,Uganda,Access,Government,Critical,Dark Web
