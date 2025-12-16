@@ -26,7 +26,7 @@ except ImportError:
 
 # Page configuration
 st.set_page_config(
-    page_title="CyHawk Africa - Cyber Threat Intelligence Dashboard",
+    page_title="CyHawk Africa - CTI Dashboard",
     page_icon="🦅",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -83,7 +83,7 @@ def get_theme_colors():
 colors = get_theme_colors()
 
 # Custom CSS with CyHawk branding
-st.markdown(f"""
+css_styles = f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
     
@@ -339,7 +339,8 @@ st.markdown(f"""
     }}
     
     </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(css_styles, unsafe_allow_html=True)
 
 # Generate sample data function
 def generate_sample_data():
