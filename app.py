@@ -10,7 +10,7 @@ import os
 # -------------------------------------------------
 st.set_page_config(
     page_title="CyHawk Africa – Cyber Threat Intelligence",
-    page_icon="assets/cyhawk_icon.png",
+    page_icon="assets/favicon.ico",
     layout="wide",
     initial_sidebar_state="expanded"
 )
