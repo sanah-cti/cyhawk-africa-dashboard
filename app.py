@@ -82,33 +82,34 @@ def get_theme_colors():
 
 colors = get_theme_colors()
 
+# Extract colors for CSS
+bg_primary = colors['bg_primary']
+bg_secondary = colors['bg_secondary']
+bg_card = colors['bg_card']
+text_primary = colors['text_primary']
+text_secondary = colors['text_secondary']
+accent = colors['accent']
+accent_light = colors['accent_light']
+border = colors['border']
+success = colors['success']
+warning = colors['warning']
+
 # Custom CSS with CyHawk branding
-css_styles = f"""
+st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
     
-    * {{
-        font-family: 'Inter', sans-serif;
-    }}
-    
-    .main {{
-        background-color: {colors['bg_primary']};
-    }}
-    
-    .stApp {{
-        background: {colors['bg_primary']};
-    }}
-    
-    /* Hide Streamlit branding */
+    * {{ font-family: 'Inter', sans-serif; }}
+    .main {{ background-color: {bg_primary}; }}
+    .stApp {{ background: {bg_primary}; }}
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     header {{visibility: hidden;}}
     
-    /* Top Header Bar */
     .top-header {{
-        background: {colors['bg_card']};
+        background: {bg_card};
         padding: 1.5rem 2rem;
-        border-bottom: 1px solid {colors['border']};
+        border-bottom: 1px solid {border};
         margin: -6rem -6rem 2rem -6rem;
         display: flex;
         justify-content: space-between;
@@ -121,14 +122,12 @@ css_styles = f"""
         gap: 1rem;
     }}
     
-    .brand-logo-container {{
-        flex-shrink: 0;
-    }}
+    .brand-logo-container {{ flex-shrink: 0; }}
     
     .brand-logo-circle {{
         width: 60px;
         height: 60px;
-        background: {colors['accent']};
+        background: {accent};
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -136,59 +135,50 @@ css_styles = f"""
         font-size: 2rem;
         color: white;
         border: 2px solid white;
-    }}
-    
-    .brand-logo {{
-        font-size: 2rem;
-        color: {colors['accent']};
         font-weight: 800;
     }}
     
     .brand-title {{
-        color: {colors['text_primary']};
+        color: {text_primary};
         font-size: 1.5rem;
         font-weight: 700;
         margin: 0;
     }}
     
     .brand-subtitle {{
-        color: {colors['text_secondary']};
+        color: {text_secondary};
         font-size: 0.85rem;
         margin: 0;
         font-weight: 400;
     }}
     
-    /* Stats Bar */
     .stats-bar {{
         display: flex;
         gap: 2rem;
         align-items: center;
     }}
     
-    .stat-item {{
-        text-align: center;
-    }}
+    .stat-item {{ text-align: center; }}
     
     .stat-value {{
         font-size: 1.8rem;
         font-weight: 700;
-        color: {colors['accent']};
+        color: {accent};
         line-height: 1;
         margin: 0;
     }}
     
     .stat-label {{
         font-size: 0.7rem;
-        color: {colors['text_secondary']};
+        color: {text_secondary};
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-top: 0.25rem;
     }}
     
-    /* Status Indicators */
     .status-bar {{
-        background: {colors['bg_card']};
-        border: 1px solid {colors['border']};
+        background: {bg_card};
+        border: 1px solid {border};
         border-radius: 12px;
         padding: 1rem 1.5rem;
         margin-bottom: 1.5rem;
@@ -208,7 +198,7 @@ css_styles = f"""
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: {colors['success']};
+        background: {success};
         animation: pulse 2s infinite;
     }}
     
@@ -217,14 +207,11 @@ css_styles = f"""
         50% {{ opacity: 0.5; }}
     }}
     
-    .status-warning {{
-        background: {colors['warning']};
-    }}
+    .status-warning {{ background: {warning}; }}
     
-    /* Section Cards */
     .section-card {{
-        background: {colors['bg_card']};
-        border: 1px solid {colors['border']};
+        background: {bg_card};
+        border: 1px solid {border};
         border-radius: 12px;
         padding: 1.5rem;
         margin-bottom: 1.5rem;
@@ -241,7 +228,7 @@ css_styles = f"""
     .section-icon {{
         width: 36px;
         height: 36px;
-        background: linear-gradient(135deg, {colors['accent']} 0%, {colors['accent_light']} 100%);
+        background: linear-gradient(135deg, {accent} 0%, {accent_light} 100%);
         border-radius: 8px;
         display: flex;
         align-items: center;
@@ -250,24 +237,23 @@ css_styles = f"""
     }}
     
     .section-title {{
-        color: {colors['text_primary']};
+        color: {text_primary};
         font-size: 1.1rem;
         font-weight: 600;
         margin: 0;
     }}
     
-    /* Tabs Navigation */
     .nav-tabs {{
         display: flex;
         gap: 0.5rem;
         margin-bottom: 2rem;
         padding-bottom: 1rem;
-        border-bottom: 1px solid {colors['border']};
+        border-bottom: 1px solid {border};
     }}
     
     .nav-tab {{
         padding: 0.5rem 1.5rem;
-        color: {colors['text_secondary']};
+        color: {text_secondary};
         text-decoration: none;
         font-weight: 500;
         border-radius: 6px;
@@ -276,36 +262,32 @@ css_styles = f"""
     }}
     
     .nav-tab.active {{
-        color: {colors['accent']};
+        color: {accent};
         background: rgba(220, 20, 60, 0.1);
     }}
     
     .nav-tab:hover {{
-        color: {colors['accent']};
+        color: {accent};
         background: rgba(220, 20, 60, 0.05);
     }}
     
-    /* Sidebar styling */
     [data-testid="stSidebar"] {{
-        background-color: {colors['bg_secondary']};
-        border-right: 1px solid {colors['border']};
+        background-color: {bg_secondary};
+        border-right: 1px solid {border};
     }}
     
-    [data-testid="stSidebar"] .stMarkdown {{
-        color: {colors['text_primary']};
-    }}
+    [data-testid="stSidebar"] .stMarkdown {{ color: {text_primary}; }}
     
-    /* Filter sections */
     .filter-group {{
-        background: {colors['bg_card']};
-        border: 1px solid {colors['border']};
+        background: {bg_card};
+        border: 1px solid {border};
         border-radius: 8px;
         padding: 1rem;
         margin-bottom: 1rem;
     }}
     
     .filter-title {{
-        color: {colors['text_primary']};
+        color: {text_primary};
         font-size: 0.9rem;
         font-weight: 600;
         margin-bottom: 0.75rem;
@@ -313,9 +295,8 @@ css_styles = f"""
         letter-spacing: 0.5px;
     }}
     
-    /* Buttons */
     .stButton > button {{
-        background: linear-gradient(135deg, {colors['accent']} 0%, {colors['accent_light']} 100%);
+        background: linear-gradient(135deg, {accent} 0%, {accent_light} 100%);
         color: white;
         border: none;
         border-radius: 6px;
@@ -330,34 +311,14 @@ css_styles = f"""
         box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
     }}
     
-    /* Theme toggle */
-    .theme-toggle {{
-        background: {colors['bg_card']};
-        border: 1px solid {colors['border']};
-        border-radius: 6px;
-        padding: 0.5rem 1rem;
-        cursor: pointer;
-        color: {colors['text_primary']};
-        font-size: 1.2rem;
-        transition: all 0.3s;
-    }}
-    
-    .theme-toggle:hover {{
-        background: {colors['accent']};
-        color: white;
-    }}
-    
-    /* Metrics styling */
     [data-testid="metric-container"] {{
-        background: {colors['bg_card']};
-        border: 1px solid {colors['border']};
+        background: {bg_card};
+        border: 1px solid {border};
         border-radius: 8px;
         padding: 1rem;
     }}
-    
     </style>
-"""
-st.markdown(css_styles, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # Generate sample data function
 def generate_sample_data():
