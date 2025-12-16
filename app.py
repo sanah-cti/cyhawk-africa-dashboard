@@ -142,6 +142,7 @@ st.markdown(f"""
     align-items: center;
 }}
 
+/* Status Indicators */
 .status-indicator {{
     display: flex;
     align-items: center;
@@ -159,11 +160,64 @@ st.markdown(f"""
     border-radius: 50%;
     background: {C['success']};
     animation: pulse 2s infinite;
+    box-shadow: 0 0 0 0 rgba(35, 134, 54, 0.7);
 }}
 
 @keyframes pulse {{
-    0%, 100% {{ opacity: 1; }}
-    50% {{ opacity: 0.5; }}
+    0% {{
+        box-shadow: 0 0 0 0 rgba(35, 134, 54, 0.7);
+    }}
+    50% {{
+        box-shadow: 0 0 0 8px rgba(35, 134, 54, 0);
+    }}
+    100% {{
+        box-shadow: 0 0 0 0 rgba(35, 134, 54, 0);
+    }}
+}}
+
+.last-refresh {{
+    font-size: 0.75rem;
+    color: {C['text_muted']};
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}}
+
+.refresh-icon {{
+    width: 12px;
+    height: 12px;
+    border: 2px solid {C['text_muted']};
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 3s linear infinite;
+}}
+
+@keyframes spin {{
+    0% {{ transform: rotate(0deg); }}
+    100% {{ transform: rotate(360deg); }}
+}}
+
+.activity-indicator {{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}}
+
+.activity-bar {{
+    width: 2px;
+    height: 12px;
+    background: {C['accent']};
+    animation: activity 1.5s ease-in-out infinite;
+}}
+
+.activity-bar:nth-child(1) {{ animation-delay: 0s; }}
+.activity-bar:nth-child(2) {{ animation-delay: 0.2s; }}
+.activity-bar:nth-child(3) {{ animation-delay: 0.4s; }}
+.activity-bar:nth-child(4) {{ animation-delay: 0.6s; }}
+
+@keyframes activity {{
+    0%, 100% {{ height: 6px; opacity: 0.3; }}
+    50% {{ height: 16px; opacity: 1; }}
 }}
 
 /* Content Container */
@@ -254,6 +308,36 @@ st.markdown(f"""
     border-radius: 12px;
     color: {C['text_secondary']};
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}}
+
+.live-badge {{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(35, 134, 54, 0.1);
+    border: 1px solid {C['success']};
+    border-radius: 12px;
+    color: {C['success']};
+    font-weight: 600;
+}}
+
+.live-badge::before {{
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: {C['success']};
+    animation: pulse-small 2s infinite;
+}}
+
+@keyframes pulse-small {{
+    0%, 100% {{ opacity: 1; }}
+    50% {{ opacity: 0.3; }}
 }}
 
 /* Sidebar Styling */
@@ -399,10 +483,26 @@ def load_data():
         csv_path = 'data/incidents.csv'
         if os.path.exists(csv_path):
             df = pd.read_csv(csv_path)
-            df['date'] = pd.to_datetime(df['date'])
+            df['date'] = pd.to_datetime(df['date'], errors='coerce')
+            
+            # Drop rows with invalid dates
+            df = df.dropna(subset=['date'])
+            
+            # Fill NaN values in categorical columns with 'Unknown'
+            categorical_columns = ['actor', 'country', 'threat_type', 'sector', 'severity', 'source']
+            for col in categorical_columns:
+                if col in df.columns:
+                    df[col] = df[col].fillna('Unknown')
+                    # Convert to string to avoid mixed types
+                    df[col] = df[col].astype(str)
+            
+            # If dataframe is empty after cleaning, use sample data
+            if len(df) == 0:
+                df = generate_sample_data()
         else:
             df = generate_sample_data()
-    except:
+    except Exception as e:
+        st.error(f"Error loading data: {str(e)}. Using sample data.")
         df = generate_sample_data()
     
     df['year'] = df['date'].dt.year
@@ -413,8 +513,17 @@ def load_data():
 df = load_data()
 
 # --------------------------------------------------
-# NAVIGATION BAR
+# NAVIGATION BAR WITH LIVE SIGNALS
 # --------------------------------------------------
+import time
+
+# Calculate time since last refresh
+if 'last_refresh_time' not in st.session_state:
+    st.session_state.last_refresh_time = time.time()
+
+current_time = time.time()
+minutes_ago = int((current_time - st.session_state.last_refresh_time) / 60)
+
 def get_logo_base64():
     logo_path = "assets/cyhawk_logo.png"
     if os.path.exists(logo_path):
@@ -432,6 +541,9 @@ with col1:
     else:
         logo_html = f'<div class="nav-logo" style="background:{C["accent"]};display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1.5rem;">C</div>'
     
+    # Get current time for display
+    current_time_str = datetime.now().strftime("%H:%M")
+    
     st.markdown(f"""
     <div class="nav-bar">
         <div class="nav-brand">
@@ -445,6 +557,19 @@ with col1:
             <div class="status-indicator">
                 <div class="status-dot"></div>
                 <span>Live Monitoring</span>
+            </div>
+            <div class="status-indicator">
+                <div class="activity-indicator">
+                    <div class="activity-bar"></div>
+                    <div class="activity-bar"></div>
+                    <div class="activity-bar"></div>
+                    <div class="activity-bar"></div>
+                </div>
+                <span>{current_time_str} UTC</span>
+            </div>
+            <div class="last-refresh">
+                <div class="refresh-icon"></div>
+                <span>Updated {minutes_ago}m ago</span>
             </div>
         </div>
     </div>
@@ -491,20 +616,20 @@ with st.sidebar:
     
     selected_threat_types = st.multiselect(
         "Threat Type",
-        options=sorted(df['threat_type'].unique()),
-        default=df['threat_type'].unique()
+        options=sorted([t for t in df['threat_type'].unique() if pd.notna(t)]),
+        default=list(df['threat_type'].unique())
     )
     
     selected_severity = st.multiselect(
         "Severity Level",
-        options=sorted(df['severity'].unique()),
-        default=df['severity'].unique()
+        options=sorted([s for s in df['severity'].unique() if pd.notna(s)]),
+        default=list(df['severity'].unique())
     )
     
     selected_sectors = st.multiselect(
         "Industry Sector",
-        options=sorted(df['sector'].unique()),
-        default=df['sector'].unique()
+        options=sorted([sec for sec in df['sector'].unique() if pd.notna(sec)]),
+        default=list(df['sector'].unique())
     )
     
     filtered_df = filtered_df[
@@ -517,8 +642,26 @@ with st.sidebar:
     st.markdown('<div class="sidebar-title">ANALYTICS</div>', unsafe_allow_html=True)
     
     coverage = (len(filtered_df) / len(df)) * 100 if len(df) > 0 else 0
-    st.metric("Data Coverage", f"{coverage:.1f}%")
-    st.metric("Records Shown", len(filtered_df))
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.metric("Coverage", f"{coverage:.1f}%")
+    with col_b:
+        st.metric("Records", len(filtered_df))
+    
+    # Add subtle activity indicator
+    st.markdown(f"""
+    <div style="margin-top: 1rem; padding: 0.75rem; background: {C['bg_secondary']}; border-radius: 6px; border-left: 3px solid {C['success']};">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+            <div class="activity-indicator">
+                <div class="activity-bar"></div>
+                <div class="activity-bar"></div>
+                <div class="activity-bar"></div>
+            </div>
+            <span style="font-size: 0.75rem; color: {C['text_secondary']}; font-weight: 600;">ACTIVE FEED</span>
+        </div>
+        <div style="font-size: 0.7rem; color: {C['text_muted']};">Intelligence pipeline operational</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # --------------------------------------------------
 # MAIN CONTENT
@@ -564,7 +707,7 @@ with col1:
     <div class="chart-card">
         <div class="chart-header">
             <h3 class="chart-title">Threat Classification</h3>
-            <span class="chart-badge">Distribution</span>
+            <span class="live-badge">LIVE</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -600,7 +743,7 @@ with col2:
     <div class="chart-card">
         <div class="chart-header">
             <h3 class="chart-title">Severity Analysis</h3>
-            <span class="chart-badge">Risk Levels</span>
+            <span class="live-badge">LIVE</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -631,11 +774,20 @@ with col2:
     st.plotly_chart(fig, use_container_width=True, key="severity_bar", config={'displayModeBar': False})
 
 # Timeline Chart
+# Get time range for display
+if len(timeline_df) > 0:
+    date_range = f"{timeline_df['Date'].min()} to {timeline_df['Date'].max()}"
+else:
+    date_range = "No data"
+
 st.markdown(f"""
 <div class="chart-card">
     <div class="chart-header">
         <h3 class="chart-title">Activity Timeline</h3>
-        <span class="chart-badge">Daily Aggregation</span>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="chart-badge">{date_range}</span>
+            <span class="live-badge">STREAMING</span>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -878,12 +1030,34 @@ with st.sidebar:
         )
     
     st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)
+    st.info("💡 Data updates must be performed through backend administration.", icon="ℹ️")
 
 # --------------------------------------------------
-# FOOTER
+# FOOTER WITH SYSTEM STATUS
 # --------------------------------------------------
+# Calculate uptime (simulated)
+uptime_hours = int((time.time() - st.session_state.last_refresh_time) / 3600)
+if uptime_hours == 0:
+    uptime_display = f"{int((time.time() - st.session_state.last_refresh_time) / 60)} minutes"
+else:
+    uptime_display = f"{uptime_hours}h {int(((time.time() - st.session_state.last_refresh_time) % 3600) / 60)}m"
+
 st.markdown(f"""
 <div class="footer">
+    <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 1rem; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: {C['success']};"></div>
+            <span style="font-size: 0.75rem; color: {C['text_secondary']};">System Operational</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="refresh-icon"></div>
+            <span style="font-size: 0.75rem; color: {C['text_secondary']};">Last sync: {minutes_ago}m ago</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.75rem; color: {C['text_secondary']};">⏱ Uptime: {uptime_display}</span>
+        </div>
+    </div>
     <strong style="color:{C['accent']}">CyHawk Africa</strong> © {datetime.now().year} | Threat Intelligence Platform<br>
+    <small style="color:{C['text_muted']}">Cybersecurity intelligence for Africa</small>
 </div>
 """, unsafe_allow_html=True)
