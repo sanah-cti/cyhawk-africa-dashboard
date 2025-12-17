@@ -24,15 +24,33 @@ except ImportError:
 # -------------------------------------------------------------------
 CYHAWK_RED = "#C41E3A"
 CYHAWK_RED_DARK = "#9A1529"
-CYHAWK_DARK = "#0D1117"
-CARD_BG = "#161B22"
-BORDER = "#30363D"
-TEXT = "#E6EDF3"
-TEXT_MUTED = "#8B949E"
 
 # Initialize view all state
 if 'show_all_actors' not in st.session_state:
     st.session_state.show_all_actors = False
+
+# Theme-aware colors based on Streamlit's theme
+# Check if we're in dark mode (default) or light mode
+def get_theme_colors():
+    # Try to detect theme from query params or default to dark
+    try:
+        # Streamlit automatically handles this, but we provide fallback colors
+        return {
+            "bg": "var(--background-color)",
+            "card": "var(--secondary-background-color)",
+            "border": "var(--border-color)",
+            "text": "var(--text-color)",
+            "text_muted": "var(--text-secondary-color)"
+        }
+    except:
+        # Fallback to dark theme colors
+        return {
+            "bg": "#0D1117",
+            "card": "#161B22",
+            "border": "#30363D",
+            "text": "#E6EDF3",
+            "text_muted": "#8B949E"
+        }
 
 # -------------------------------------------------------------------
 # CSS STYLES
@@ -258,7 +276,7 @@ for i in range(0, num_actors, num_cols):
                     # Header with threat badge
                     st.markdown(f"""
                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-                            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: {TEXT}; flex: 1; padding-right: 1rem;">
+                            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; flex: 1; padding-right: 1rem;">
                                 {row['actor']}
                             </h3>
                             <span style="background: {threat_badge_color}; color: white; padding: 0.25rem 0.6rem; 
@@ -271,7 +289,7 @@ for i in range(0, num_actors, num_cols):
                     
                     # Alias
                     st.markdown(f"""
-                        <p style="font-size: 0.8rem; color: {TEXT_MUTED}; 
+                        <p style="font-size: 0.8rem; opacity: 0.7;
                              font-style: italic; margin: 0 0 1rem 0;">
                             {row['alias']}
                         </p>
@@ -279,11 +297,11 @@ for i in range(0, num_actors, num_cols):
                     
                     # Info
                     st.markdown(f"""
-                        <div style="font-size: 0.85rem; color: {TEXT_MUTED}; 
+                        <div style="font-size: 0.85rem; opacity: 0.8;
                              margin-bottom: 1rem; line-height: 1.6;">
-                            <div><strong style="color: {TEXT_MUTED};">Origin:</strong> {row['origin']}</div>
-                            <div><strong style="color: {TEXT_MUTED};">Type:</strong> {row['type']}</div>
-                            <div><strong style="color: {TEXT_MUTED};">Active:</strong> {row['active']}</div>
+                            <div><strong>Origin:</strong> {row['origin']}</div>
+                            <div><strong>Type:</strong> {row['type']}</div>
+                            <div><strong>Active:</strong> {row['active']}</div>
                         </div>
                     """, unsafe_allow_html=True)
                     
