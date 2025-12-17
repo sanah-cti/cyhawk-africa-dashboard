@@ -5,21 +5,35 @@ import plotly.graph_objects as go
 from datetime import datetime
 import os
 
-# Page configuration
-st.set_page_config(
-    page_title="Actor Profile | CyHawk Africa",
-    page_icon="📋",
-    layout="wide"
-)
+# Import navigation utilities
+try:
+    from navigation_utils import add_logo_and_branding, set_page_config as custom_set_page_config
+    custom_set_page_config(
+        page_title="Actor Profile | CyHawk Africa",
+        page_icon="📋",
+        layout="wide"
+    )
+    add_logo_and_branding()
+except ImportError:
+    st.set_page_config(
+        page_title="Actor Profile | CyHawk Africa",
+        page_icon="📋",
+        layout="wide"
+    )
 
 # Get selected actor from URL or session state
 query_params = st.query_params
 selected_actor = query_params.get("actor", [""])[0] if "actor" in query_params else st.session_state.get('selected_actor', '')
 
 if not selected_actor:
-    st.warning("⚠️ No threat actor selected. Please go back to Threat Actors page.")
-    if st.button("← Back to Threat Actors"):
-        st.switch_page("pages/1_🎯_Threat_Actors.py")
+    st.error("⚠️ No threat actor selected. Please select an actor from the Threat Actors page.")
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("← Back to Threat Actors", use_container_width=True, type="primary"):
+            st.switch_page("pages/1_🎯_Threat_Actors.py")
+    
+    st.info("💡 **Tip:** Click on a threat actor card from the Threat Actors page to view their detailed profile.")
     st.stop()
 
 # Theme
@@ -171,6 +185,21 @@ st.markdown(f"""
 .mitre-icon {{
     font-size: 1.5rem;
 }}
+
+.back-button {{
+    color: white;
+    text-decoration: none;
+    opacity: 0.8;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    transition: opacity 0.3s;
+}}
+
+.back-button:hover {{
+    opacity: 1;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -306,25 +335,25 @@ actor_df = df[df['actor'] == selected_actor]
 # Header
 st.markdown(f"""
 <div class="profile-header">
-    <a href="?page=actors" style="color: white; text-decoration: none; opacity: 0.8;">← Back to Threat Actors</a>
+    <div class="back-button" onclick="window.history.back()">← Back to Threat Actors</div>
     <h1 class="actor-title">{selected_actor}</h1>
     <div class="actor-aliases">{profile['alias']}</div>
     <div class="info-grid">
         <div class="info-item">
             <div class="info-label">Origin</div>
-            <div class="info-value">🌍 {profile['origin']}</div>
+            <div class="info-value">{profile['origin']}</div>
         </div>
         <div class="info-item">
             <div class="info-label">Type</div>
-            <div class="info-value">🏷️ {profile['type']}</div>
+            <div class="info-value">{profile['type']}</div>
         </div>
         <div class="info-item">
             <div class="info-label">Active Since</div>
-            <div class="info-value">📅 {profile['active_since']}</div>
+            <div class="info-value">{profile['active_since']}</div>
         </div>
         <div class="info-item">
             <div class="info-label">Threat Level</div>
-            <div class="info-value">⚠️ {profile['threat_level']}</div>
+            <div class="info-value">{profile['threat_level']}</div>
         </div>
     </div>
 </div>
@@ -332,7 +361,7 @@ st.markdown(f"""
 
 # Overview
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
-st.markdown('<h2 class="section-title">📖 Overview</h2>', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">Overview</h2>', unsafe_allow_html=True)
 st.markdown(f"<p style='color: {C['text']}; line-height: 1.6;'>{profile['description']}</p>", unsafe_allow_html=True)
 
 # MITRE ATT&CK Link if available
@@ -354,14 +383,14 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<h2 class="section-title">🛠️ Tactics, Techniques & Procedures (TTPs)</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">Tactics, Techniques & Procedures (TTPs)</h2>', unsafe_allow_html=True)
     for ttp in profile['ttps']:
         st.markdown(f'<span class="ttp-badge">{ttp}</span>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col2:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<h2 class="section-title">🎯 Primary Targets</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">Primary Targets</h2>', unsafe_allow_html=True)
     for target in profile['targets']:
         st.markdown(f'<div class="target-item">{target}</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -369,7 +398,7 @@ with col2:
 # Notable Attacks
 if 'notable_attacks' in profile:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<h2 class="section-title">💥 Notable Attacks</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">Notable Attacks</h2>', unsafe_allow_html=True)
     for attack in profile['notable_attacks']:
         st.markdown(f"- **{attack}**")
     st.markdown('</div>', unsafe_allow_html=True)
@@ -377,7 +406,7 @@ if 'notable_attacks' in profile:
 # Activity Statistics (if data available)
 if len(actor_df) > 0:
     st.markdown("---")
-    st.subheader("📊 Activity Analysis")
+    st.subheader("Activity Analysis")
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -415,6 +444,7 @@ if len(actor_df) > 0:
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         st.markdown('</div>', unsafe_allow_html=True)
 
-# Back button
+# Back button at bottom
+st.markdown("---")
 if st.button("← Back to Threat Actors", use_container_width=False):
-    st.switch_page("pages/1_🎯_Threat_Actors.py")
+    st.switch_page("pages/1_Threat_Actors.py")
