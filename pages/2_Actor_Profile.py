@@ -1,238 +1,266 @@
+"""
+Comprehensive Threat Actor Profile Generator
+Data Sources:
+1. incidents.csv (primary ground truth)
+2. AlienVault OTX (community threat intel, IOCs, tags)
+3. ransomware.live (victim confirmation)
+"""
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import requests
+import os
 from datetime import datetime
 
-# ------------------------------------------------------------------
-# Page config
-# ------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# PAGE CONFIG
+# -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Threat Actor Profile | CyHawk Africa",
+    page_title="Actor Profile | CyHawk Africa",
     page_icon="assets/favicon.ico",
     layout="wide"
 )
 
-# ------------------------------------------------------------------
-# Secrets
-# ------------------------------------------------------------------
-OTX_API_KEY = st.secrets.get("ALIENVAULT_OTX_API_KEY")
-RANSOMWARE_API_KEY = st.secrets.get("RANSOMWARE_LIVE_API_KEY")
-OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY")
+CYHAWK_RED = "#C41E3A"
+CYHAWK_RED_DARK = "#9A1529"
 
-# ------------------------------------------------------------------
-# Actor from URL
-# ------------------------------------------------------------------
-actor = st.query_params.get("actor")
-if not actor:
-    st.error("No threat actor specified.")
-    st.stop()
+# -----------------------------------------------------------------------------
+# MITRE ATT&CK MAPPING (CONTROLLED, ANALYST-SAFE)
+# -----------------------------------------------------------------------------
+MITRE_TTP_MAPPING = {
+    "ransomware": ("T1486", "Data Encrypted for Impact", "Impact"),
+    "ddos": ("T1499", "Endpoint Denial of Service", "Impact"),
+    "phishing": ("T1566", "Phishing", "Initial Access"),
+    "credential": ("T1555", "Credentials from Password Stores", "Credential Access"),
+    "lateral": ("T1021", "Remote Services", "Lateral Movement"),
+    "c2": ("T1071", "Application Layer Protocol", "Command and Control"),
+    "exfiltration": ("T1041", "Exfiltration Over C2 Channel", "Exfiltration"),
+    "malware": ("T1204", "User Execution", "Execution"),
+}
 
-# ------------------------------------------------------------------
-# Load incidents data
-# ------------------------------------------------------------------
-@st.cache_data(ttl=3600)
+# -----------------------------------------------------------------------------
+# DATA LOADING
+# -----------------------------------------------------------------------------
+@st.cache_data
 def load_incidents():
+    if not os.path.exists("data/incidents.csv"):
+        return pd.DataFrame()
     df = pd.read_csv("data/incidents.csv")
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     return df.dropna(subset=["date"])
 
 df = load_incidents()
-actor_df = df[df["actor"] == actor]
 
-# ------------------------------------------------------------------
-# Internal analysis
-# ------------------------------------------------------------------
-internal_stats = {
-    "total_attacks": len(actor_df),
-    "high_severity": int((actor_df["severity"] == "High").sum()),
-    "countries": actor_df["country"].value_counts().to_dict(),
-    "industries": actor_df["sector"].value_counts().to_dict(),
-}
+# -----------------------------------------------------------------------------
+# API FETCHERS
+# -----------------------------------------------------------------------------
+@st.cache_data(ttl=3600)
+def fetch_otx(actor):
+    key = st.secrets.get("ALIENVAULT_OTX_API_KEY")
+    if not key:
+        return None
 
-# ------------------------------------------------------------------
-# AlienVault OTX
-# ------------------------------------------------------------------
-@st.cache_data(ttl=86400)
-def fetch_otx(actor_name):
-    if not OTX_API_KEY:
-        return {}
-
-    headers = {"X-OTX-API-KEY": OTX_API_KEY}
-    url = f"https://otx.alienvault.com/api/v1/search/pulses?q={actor_name}"
-    r = requests.get(url, headers=headers, timeout=20)
-
+    r = requests.get(
+        "https://otx.alienvault.com/api/v1/search/pulses",
+        headers={"X-OTX-API-KEY": key},
+        params={"q": actor},
+        timeout=15
+    )
     if r.status_code != 200:
-        return {}
+        return None
 
     pulses = r.json().get("results", [])
-    iocs = {"ipv4": set(), "domain": set(), "hash": set()}
+    tags, iocs = set(), []
 
     for p in pulses:
-        for ind in p.get("indicators", []):
-            if ind["type"] in iocs:
-                iocs[ind["type"]].add(ind["indicator"])
+        tags.update(p.get("tags", []))
+        for i in p.get("indicators", []):
+            iocs.append((i.get("type"), i.get("indicator")))
 
-    return {
-        "pulse_count": len(pulses),
-        "iocs": {k: list(v)[:20] for k, v in iocs.items()}
-    }
+    return {"pulses": pulses, "tags": list(tags), "iocs": iocs}
 
-otx_data = fetch_otx(actor)
-
-# ------------------------------------------------------------------
-# ransomware.live
-# ------------------------------------------------------------------
-@st.cache_data(ttl=86400)
-def fetch_ransomware(actor_name):
-    if not RANSOMWARE_API_KEY:
-        return {}
-
-    headers = {"Authorization": f"Bearer {RANSOMWARE_API_KEY}"}
-    url = f"https://api.ransomware.live/v1/group/{actor_name.lower()}"
-    r = requests.get(url, headers=headers, timeout=20)
-
+@st.cache_data(ttl=3600)
+def fetch_ransomware(actor):
+    r = requests.get("https://api.ransomware.live/recentvictims", timeout=15)
     if r.status_code != 200:
-        return {}
+        return None
+    victims = [
+        v for v in r.json()
+        if actor.lower() in v.get("group_name", "").lower()
+    ]
+    return victims
 
-    victims = r.json().get("victims", [])
-    return {
-        "victim_count": len(victims),
-        "countries": list({v.get("country") for v in victims if v.get("country")}),
-        "industries": list({v.get("sector") for v in victims if v.get("sector")}),
-    }
+# -----------------------------------------------------------------------------
+# ATT&CK EXTRACTION
+# -----------------------------------------------------------------------------
+def extract_ttps(actor_df, otx):
+    keywords = set()
 
-ransomware_data = fetch_ransomware(actor)
+    for col in ["threat_type", "source"]:
+        if col in actor_df.columns:
+            keywords.update(actor_df[col].dropna().str.lower())
 
-# ------------------------------------------------------------------
-# CyHawk blog index (example – extend this)
-# ------------------------------------------------------------------
-CYHAWK_POSTS = [
-    {
-        "title": "NightSpire Ransomware Targets Southern Africa",
-        "url": "https://cyhawk-africa.com/nightspire-africa",
-        "actors": ["Nightspire"],
-        "date": "2025-06-12",
-    }
-]
+    if otx:
+        keywords.update([t.lower() for t in otx["tags"]])
 
-blog_mentions = [p for p in CYHAWK_POSTS if actor in p["actors"]]
+    mapped = {}
+    for k in keywords:
+        for key, val in MITRE_TTP_MAPPING.items():
+            if key in k:
+                mapped[val[0]] = {
+                    "id": val[0],
+                    "name": val[1],
+                    "tactic": val[2]
+                }
 
-# ------------------------------------------------------------------
-# LLM Analyst synthesis
-# ------------------------------------------------------------------
-@st.cache_data(ttl=86400)
-def generate_report():
-    from openai import OpenAI
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    return list(mapped.values())
 
-    prompt = f"""
-You are a cyber threat intelligence analyst.
+# -----------------------------------------------------------------------------
+# ACTOR SELECTION
+# -----------------------------------------------------------------------------
+actor = st.query_params.get("actor", "")
+if isinstance(actor, list):
+    actor = actor[0]
 
-Create a factual threat actor report for: {actor}
+if not actor:
+    st.error("No threat actor selected.")
+    st.stop()
 
-Use only the supplied data. Do not fabricate IOCs.
+actor_df = df[df["actor"] == actor]
 
-DATA:
-Internal incidents: {internal_stats}
-AlienVault OTX: {otx_data}
-Ransomware.live: {ransomware_data}
-CyHawk blog mentions: {blog_mentions}
+# -----------------------------------------------------------------------------
+# PROFILE METRICS
+# -----------------------------------------------------------------------------
+total_attacks = len(actor_df)
+countries = actor_df["country"].nunique()
+sectors = actor_df["sector"].nunique()
+high_sev = len(actor_df[actor_df["severity"] == "High"]) if "severity" in actor_df else 0
 
-Sections:
-1. Overview
-2. MITRE ATT&CK TTPs
-3. Targeted Countries
-4. Targeted Industries
-5. Indicators of Compromise
-6. Analyst Note
-"""
+threat_level = "Medium"
+if total_attacks > 20 or high_sev > 5:
+    threat_level = "High"
+if total_attacks > 50 or high_sev > 15:
+    threat_level = "Critical"
 
-    resp = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
+# -----------------------------------------------------------------------------
+# API DATA
+# -----------------------------------------------------------------------------
+otx = fetch_otx(actor)
+ransomware = fetch_ransomware(actor)
+ttps = extract_ttps(actor_df, otx)
 
-    return resp.choices[0].message.content
+# -----------------------------------------------------------------------------
+# HEADER
+# -----------------------------------------------------------------------------
+st.markdown(f"""
+<div style="background:linear-gradient(135deg,{CYHAWK_RED},{CYHAWK_RED_DARK});
+padding:2.5rem;border-radius:12px;color:white;">
+<a href="/Threat_Actors" style="color:white;text-decoration:none;">← Back</a>
+<h1>{actor}</h1>
+<p>Threat Level: <strong>{threat_level}</strong></p>
+</div>
+""", unsafe_allow_html=True)
 
-report_text = generate_report()
+# -----------------------------------------------------------------------------
+# OVERVIEW
+# -----------------------------------------------------------------------------
+st.markdown("## 📋 Overview")
+st.markdown(
+    f"**{actor}** has been linked to **{total_attacks} incidents** "
+    f"across **{countries} countries** and **{sectors} sectors**. "
+    "Analysis combines CyHawk incident tracking with external intelligence sources."
+)
 
-# ------------------------------------------------------------------
-# UI – Header
-# ------------------------------------------------------------------
-st.image("assets/cyhawk_logo.png", width=140)
+if ransomware:
+    st.markdown(f"Ransomware.live confirms **{len(ransomware)} victim disclosures**.")
 
-st.title(actor)
-st.caption("Threat Actor Intelligence Report")
+if otx:
+    st.markdown(f"AlienVault OTX references **{len(otx['pulses'])} intelligence pulses**.")
 
-cols = st.columns(4)
-cols[0].metric("Total Attacks", internal_stats["total_attacks"])
-cols[1].metric("High Severity", internal_stats["high_severity"])
-cols[2].metric("Countries", len(internal_stats["countries"]))
-cols[3].metric("Sectors", len(internal_stats["industries"]))
+# -----------------------------------------------------------------------------
+# ATTACK STATISTICS
+# -----------------------------------------------------------------------------
+st.markdown("## 📊 Attack Statistics")
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Total Attacks", total_attacks)
+c2.metric("Countries", countries)
+c3.metric("Sectors", sectors)
+c4.metric("High Severity", high_sev)
 
-st.divider()
+# -----------------------------------------------------------------------------
+# TARGETED COUNTRIES
+# -----------------------------------------------------------------------------
+st.markdown("## 🌍 Targeted Countries")
+country_df = actor_df["country"].value_counts().head(10).reset_index()
+country_df.columns = ["Country", "Incidents"]
 
-# ------------------------------------------------------------------
-# Overview + Analyst Report
-# ------------------------------------------------------------------
-st.subheader("Analyst Report")
-st.write(report_text)
+fig = px.bar(country_df, x="Incidents", y="Country", orientation="h")
+fig.update_traces(marker_color=CYHAWK_RED)
+st.plotly_chart(fig, use_container_width=True)
 
-# ------------------------------------------------------------------
-# Charts
-# ------------------------------------------------------------------
-if not actor_df.empty:
-    col1, col2 = st.columns(2)
+# -----------------------------------------------------------------------------
+# TARGETED INDUSTRIES
+# -----------------------------------------------------------------------------
+st.markdown("## 🏢 Targeted Industries")
+sector_df = actor_df["sector"].value_counts().reset_index()
+sector_df.columns = ["Sector", "Incidents"]
 
-    with col1:
-        st.subheader("Targeted Countries")
-        country_df = (
-            actor_df["country"]
-            .value_counts()
-            .reset_index()
-            .rename(columns={"index": "Country", "country": "Count"})
-        )
-        st.plotly_chart(
-            px.bar(country_df, x="Count", y="Country", orientation="h"),
-            use_container_width=True,
-        )
+fig = px.pie(sector_df, values="Incidents", names="Sector", hole=0.4)
+st.plotly_chart(fig, use_container_width=True)
 
-    with col2:
-        st.subheader("Targeted Industries")
-        sector_df = (
-            actor_df["sector"]
-            .value_counts()
-            .reset_index()
-            .rename(columns={"index": "Sector", "sector": "Count"})
-        )
-        st.plotly_chart(
-            px.pie(sector_df, names="Sector", values="Count", hole=0.4),
-            use_container_width=True,
-        )
+# -----------------------------------------------------------------------------
+# MITRE ATT&CK
+# -----------------------------------------------------------------------------
+st.markdown("## 🎯 Observed ATT&CK Techniques")
 
-# ------------------------------------------------------------------
-# IOCs
-# ------------------------------------------------------------------
-st.subheader("Indicators of Compromise (OSINT)")
-
-if otx_data.get("iocs"):
-    for k, v in otx_data["iocs"].items():
-        if v:
-            st.markdown(f"**{k.upper()}**")
-            for i in v:
-                st.code(i)
+if ttps:
+    for t in ttps:
+        st.markdown(f"**{t['id']} – {t['name']}**  \n*Tactic:* {t['tactic']}")
 else:
-    st.info("No publicly available IOCs identified.")
+    st.info("No ATT&CK techniques confidently mapped at this time.")
 
-st.warning(
-    "IOCs are sourced from OSINT feeds and must be validated before operational use."
+# -----------------------------------------------------------------------------
+# IOCs
+# -----------------------------------------------------------------------------
+if otx and otx["iocs"]:
+    st.markdown("## 🔍 Indicators of Compromise")
+    for t, v in otx["iocs"][:50]:
+        st.code(f"{t}: {v}")
+
+# -----------------------------------------------------------------------------
+# RANSOMWARE VICTIMS
+# -----------------------------------------------------------------------------
+if ransomware:
+    st.markdown("## 🎯 Ransomware Victims")
+    for v in ransomware[:20]:
+        st.markdown(
+            f"**{v.get('post_title')}**  \n"
+            f"Country: {v.get('country')} | Discovered: {v.get('discovered')}"
+        )
+
+# -----------------------------------------------------------------------------
+# TIMELINE
+# -----------------------------------------------------------------------------
+st.markdown("## 📈 Activity Timeline")
+timeline = actor_df.groupby(actor_df["date"].dt.to_period("M")).size().reset_index()
+timeline.columns = ["Month", "Incidents"]
+timeline["Month"] = timeline["Month"].dt.to_timestamp()
+
+fig = px.line(timeline, x="Month", y="Incidents")
+fig.update_traces(line_color=CYHAWK_RED)
+st.plotly_chart(fig, use_container_width=True)
+
+# -----------------------------------------------------------------------------
+# ANALYST NOTE
+# -----------------------------------------------------------------------------
+st.markdown("## 💼 Analyst Assessment")
+st.markdown(
+    f"Based on multi-source intelligence, **{actor}** demonstrates "
+    f"{'high operational maturity' if threat_level != 'Medium' else 'emerging activity'}. "
+    "Defenders should prioritize monitoring aligned ATT&CK techniques and apply "
+    "IOC-driven detection controls."
 )
 
-# ------------------------------------------------------------------
-# Footer
-# ------------------------------------------------------------------
-st.caption(
-    f"Last enriched: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} | CyHawk Africa"
-)
+st.success("Threat actor profile generated successfully.")
