@@ -174,47 +174,50 @@ for i in rows:
 
         profile_url = f"/Actor_Profile?actor_slug={urllib.parse.quote(row['slug'])}"
 
-        with col:
-            st.markdown(f"""
-            <div style="
-                border:1px solid #30363d;
-                border-radius:12px;
-                padding:1.25rem;
-                height:100%;
-                background:#0d1117;
-            ">
-                <h3 style="margin-top:0;">{row['actor']}</h3>
-                <p style="color:#8b949e; font-size:0.85rem;">
-                    {profile.get("alias", "Unknown")}
-                </p>
+       with col:
+    st.markdown(f"""
+    <div style="
+        border:1px solid #30363d;
+        border-radius:12px;
+        padding:1.25rem;
+        background:#0d1117;
+        height:100%;
+    ">
+        <h3 style="margin-top:0;">{row['actor']}</h3>
 
-                <div style="font-size:0.85rem; margin-bottom:1rem;">
-                    <div><strong>Origin:</strong> {profile.get("origin", "Unknown")}</div>
-                    <div><strong>Type:</strong> {profile.get("type", "Unknown")}</div>
-                </div>
+        <p style="color:#8b949e; font-size:0.85rem; font-style:italic;">
+            {profile.get('alias', 'Unknown')}
+        </p>
 
-                <div style="display:flex; gap:1rem; font-size:0.85rem;">
-                    <div><strong>{row['total_attacks']}</strong><br>Attacks</div>
-                    <div><strong>{row['countries']}</strong><br>Countries</div>
-                    <div><strong>{row['sectors']}</strong><br>Sectors</div>
-                </div>
+        <div style="font-size:0.85rem; margin-bottom:1rem; line-height:1.6;">
+            <div><strong>Origin:</strong> {profile.get('origin', 'Unknown')}</div>
+            <div><strong>Type:</strong> {profile.get('type', 'Unknown')}</div>
+            <div><strong>Active:</strong> Since {profile.get('active_since', 'Unknown')}</div>
+        </div>
 
-                <a href="{profile_url}" target="_blank"
-                   style="
-                        display:block;
-                        margin-top:1rem;
-                        text-align:center;
-                        padding:0.6rem;
-                        background:{CYHAWK_RED};
-                        color:white;
-                        border-radius:6px;
-                        text-decoration:none;
-                        font-weight:600;
-                   ">
-                    View Profile
-                </a>
-            </div>
-            """, unsafe_allow_html=True)
+        <div style="display:flex; gap:1rem; font-size:0.85rem; margin-bottom:1rem;">
+            <div><strong>{row['total_attacks']}</strong><br>Attacks</div>
+            <div><strong>{row['countries']}</strong><br>Countries</div>
+            <div><strong>{row['sectors']}</strong><br>Sectors</div>
+        </div>
+
+        <a href="/Actor_Profile?actor_slug={row['slug']}"
+           target="_blank"
+           style="
+                display:block;
+                text-align:center;
+                padding:0.6rem;
+                background:{CYHAWK_RED};
+                color:white;
+                border-radius:6px;
+                text-decoration:none;
+                font-weight:600;
+           ">
+            View Profile
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+
 
 # ----------------------------------------
 # Footer Info
