@@ -324,7 +324,7 @@ if otx and otx["iocs"]:
 # -----------------------------------------------------------------------------
 if ransomware:
     st.markdown("## 🎯 Ransomware Victims")
-   if ransomware:
+    if ransomware:
     if ransomware.get("negotiations"):
         for n in ransomware["negotiations"][:20]:
             ...
