@@ -315,7 +315,7 @@ else:
 # IOCs
 # -----------------------------------------------------------------------------
 if otx and otx["iocs"]:
-    st.markdown("## 🔍 Indicators of Compromise")
+    st.markdown("## Indicators of Compromise")
     for t, v in otx["iocs"][:50]:
         st.code(f"{t}: {v}")
 
@@ -323,7 +323,7 @@ if otx and otx["iocs"]:
 # RANSOMWARE VICTIMS
 # -----------------------------------------------------------------------------
 if ransomware:
-    st.markdown("## 🎯 Ransomware Victims")
+    st.markdown("## Ransomware Victims")
     if ransomware:
     if ransomware.get("negotiations"):
         for n in ransomware["negotiations"][:20]:
