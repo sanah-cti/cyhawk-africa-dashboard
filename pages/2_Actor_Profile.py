@@ -129,16 +129,58 @@ def fetch_otx(actor):
             "iocs": []
         }
 
-@st.cache_data(ttl=3600)
-def fetch_ransomware(actor):
-    r = requests.get("https://api.ransomware.live/recentvictims", timeout=15)
-    if r.status_code != 200:
-        return None
-    victims = [
-        v for v in r.json()
-        if actor.lower() in v.get("group_name", "").lower()
-    ]
-    return victims
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_ransomware_live_data(group):
+    """
+    Fetch comprehensive ransomware.live intelligence for a threat actor.
+    Gracefully degrades if endpoints are unavailable.
+    """
+    base = "https://api.ransomware.live"
+    data = {
+        "available": False,
+        "group": group,
+        "profile": None,
+        "iocs": [],
+        "negotiations": [],
+        "ransom_notes": [],
+        "yara_rules": []
+    }
+
+    try:
+        # Normalize group name
+        group_clean = group.lower().replace(" ", "").replace("-", "")
+
+        endpoints = {
+            "profile": f"{base}/groups/{group_clean}",
+            "iocs": f"{base}/iocs/{group_clean}",
+            "negotiations": f"{base}/negotiations/{group_clean}",
+            "ransomnotes": f"{base}/ransomnotes/{group_clean}",
+            "yara": f"{base}/yara/{group_clean}",
+        }
+
+        for key, url in endpoints.items():
+            try:
+                r = requests.get(url, timeout=8)
+                if r.status_code == 200:
+                    data[key if key != "ransomnotes" else "ransom_notes"] = r.json()
+            except requests.exceptions.Timeout:
+                continue
+
+        # Determine availability
+        if any([
+            data["profile"],
+            data["iocs"],
+            data["negotiations"],
+            data["ransom_notes"],
+            data["yara_rules"]
+        ]):
+            data["available"] = True
+
+        return data
+
+    except Exception as e:
+        data["error"] = str(e)
+        return data
 
 # -----------------------------------------------------------------------------
 # ATT&CK EXTRACTION
