@@ -4,17 +4,16 @@ import feedparser
 from dateutil import parser as date_parser
 import re
 
-# Import navigation utilities if available
+# Import navigation utilities
 try:
-    from navigation_utils import add_logo_and_branding, set_page_config
-    set_page_config(
+    from navigation_utils import add_logo_and_branding, set_page_config as custom_set_page_config
+    custom_set_page_config(
         page_title="Top 3 Trending Attacks | CyHawk Africa",
         page_icon="🔒",
         layout="wide"
     )
     add_logo_and_branding()
 except ImportError:
-    # Fallback if navigation_utils is not available
     st.set_page_config(
         page_title="Top 3 Trending Attacks | CyHawk Africa",
         page_icon="🔒",
@@ -134,6 +133,7 @@ st.markdown(f"""
     aspect-ratio: 1;
     display: flex;
     flex-direction: column;
+    text-decoration: none;
 }}
 
 .attack-card:hover {{
@@ -157,7 +157,6 @@ st.markdown(f"""
     position: absolute;
     top: 1.5rem;
     right: 1.5rem;
-    background: linear-gradient(135deg, {C['accent']} 0%, {CYHAWK_RED_DARK} 100%);
     color: white;
     font-size: 1.5rem;
     font-weight: 800;
@@ -167,7 +166,7 @@ st.markdown(f"""
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(196, 30, 58, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }}
 
 /* Category Badge */
@@ -192,6 +191,7 @@ st.markdown(f"""
     margin: 1rem 0;
     line-height: 1.4;
     padding-right: 4rem;
+    flex-grow: 0;
 }}
 
 /* Attack Description */
@@ -200,6 +200,7 @@ st.markdown(f"""
     color: {C['text_secondary']};
     line-height: 1.7;
     margin: 1rem 0 1.5rem 0;
+    flex-grow: 1;
 }}
 
 /* Meta Information */
@@ -212,6 +213,7 @@ st.markdown(f"""
     font-size: 0.9rem;
     color: {C['text_muted']};
     flex-wrap: wrap;
+    margin-top: auto;
 }}
 
 .meta-item {{
@@ -237,6 +239,8 @@ st.markdown(f"""
     background: rgba(196, 30, 58, 0.1);
     border-radius: 8px;
     transition: all 0.3s ease;
+    text-align: center;
+    justify-content: center;
 }}
 
 .read-more-link:hover {{
@@ -305,24 +309,6 @@ st.markdown(f"""
     text-decoration: underline;
 }}
 
-/* Loading State */
-.loading-message {{
-    text-align: center;
-    padding: 3rem;
-    color: {C['text_secondary']};
-    font-size: 1.1rem;
-}}
-
-/* Error State */
-.error-message {{
-    background: rgba(255, 0, 0, 0.1);
-    border: 1px solid rgba(255, 0, 0, 0.3);
-    border-radius: 12px;
-    padding: 1.5rem;
-    color: {C['text']};
-    margin: 2rem 0;
-}}
-
 /* Responsive Design */
 @media (max-width: 1200px) {{
     .attacks-container {{
@@ -381,12 +367,8 @@ def load_top_attacks_from_rss():
         feed = feedparser.parse(RSS_FEED_URL)
         
         # Check if feed was parsed successfully
-        if feed.bozo:
-            st.warning(f"RSS feed error: {feed.bozo_exception}. Displaying sample data.")
-            return get_sample_attacks()
-        
-        if not feed.entries:
-            st.warning("No articles found in RSS feed. Displaying sample data.")
+        if feed.bozo or not feed.entries:
+            st.warning("RSS feed error. Displaying sample data.")
             return get_sample_attacks()
         
         attacks = []
@@ -433,8 +415,8 @@ def load_top_attacks_from_rss():
             excerpt = ' '.join(excerpt.split())
             
             # Truncate to reasonable length
-            if len(excerpt) > 250:
-                excerpt = excerpt[:247] + '...'
+            if len(excerpt) > 200:
+                excerpt = excerpt[:197] + '...'
             
             # Estimate read time based on content length
             try:
@@ -488,7 +470,7 @@ def get_sample_attacks():
         {
             "rank": 3,
             "title": "REvil Ransomware Cripples Kenya Healthcare Network",
-            "description": "A REvil ransomware attack on Kenya's largest hospital network has severely disrupted patient care and compromised sensitive medical records. The attackers are demanding a ransom of $5 million in cryptocurrency. Healthcare services across multiple facilities remain affected.",
+            "description": "A ransomware group has listed a major Nigerian insurance company on their leak site, threatening to release sensitive customer data. The attackers are demanding a substantial ransom payment.",
             "category": "Ransomware",
             "date": "1 week ago",
             "read_time": "5 min read",
@@ -514,45 +496,46 @@ def main():
     with st.spinner("Loading latest threat intelligence..."):
         attacks = load_top_attacks_from_rss()
     
-    # Display attacks in columns for better control
-    cols = st.columns(3)
+    # Display attacks in a single HTML block (this ensures proper rendering)
+    rank_colors = {1: "#FFD700", 2: "#C0C0C0", 3: "#CD7F32"}
     
-    for idx, attack in enumerate(attacks):
-        rank_color = "#FFD700" if attack['rank'] == 1 else "#C0C0C0" if attack['rank'] == 2 else "#CD7F32"
+    attacks_html = '<div class="attacks-container">'
+    
+    for attack in attacks:
+        rank_color = rank_colors.get(attack['rank'], "#CD7F32")
         
-        with cols[idx]:
-            st.markdown(f"""
-            <div class="attack-card">
-                <div class="rank-badge" style="background: {rank_color}; box-shadow: 0 4px 12px {rank_color}40;">
-                    {attack['rank']}
-                </div>
-                
-                <div class="category-badge">{attack['category']}</div>
-                
-                <h2 class="attack-title">{attack['title']}</h2>
-                
-                <p class="attack-description">{attack['description']}</p>
-                
-                <div class="attack-meta">
-                    <div class="meta-item">
-                        <span class="meta-label">Published:</span>
-                        <span>{attack['date']}</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">Read Time:</span>
-                        <span>{attack['read_time']}</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">Source:</span>
-                        <span>{attack['source']}</span>
-                    </div>
-                </div>
-                
-                <a href="{attack['url']}" target="_blank" class="read-more-link">
-                    Read Full Article →
-                </a>
+        attacks_html += f"""
+        <a href="{attack['url']}" target="_blank" class="attack-card">
+            <div class="rank-badge" style="background: {rank_color}; box-shadow: 0 4px 12px {rank_color}40;">
+                {attack['rank']}
             </div>
-            """, unsafe_allow_html=True)
+            
+            <div class="category-badge">{attack['category']}</div>
+            
+            <h2 class="attack-title">{attack['title']}</h2>
+            
+            <p class="attack-description">{attack['description']}</p>
+            
+            <div class="attack-meta">
+                <div class="meta-item">
+                    <span class="meta-label">Published:</span>
+                    <span>{attack['date']}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Read Time:</span>
+                    <span>{attack['read_time']}</span>
+                </div>
+            </div>
+            
+            <div class="read-more-link">
+                Read Full Article →
+            </div>
+        </a>
+        """
+    
+    attacks_html += '</div>'
+    
+    st.markdown(attacks_html, unsafe_allow_html=True)
     
     # Statistics Section
     total_attacks = len(attacks)
@@ -587,6 +570,7 @@ def main():
         </p>
         <p>
             Visit <a href="https://cyhawk-africa.com/blog" target="_blank" class="footer-cta-link">CyHawk Africa Blog</a> 
+            for comprehensive threat intelligence and security research
         </p>
     </div>
     """, unsafe_allow_html=True)
