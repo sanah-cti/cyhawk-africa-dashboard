@@ -238,7 +238,7 @@ if total_attacks > 50 or high_sev > 15:
 # API DATA
 # -----------------------------------------------------------------------------
 otx = fetch_otx(actor)
-ransomware = fetch_ransomware(actor)
+ransomware = fetch_ransomware_live_data(actor)
 ttps = extract_ttps(actor_df, otx)
 
 # -----------------------------------------------------------------------------
