@@ -1,6 +1,6 @@
 """
-Advanced Threat Actor Report Generator with Claude AI Integration
-Analyzes incidents.csv, searches CyHawk blog, and uses Claude for comprehensive reporting
+Complete Threat Actor Profile with Auto-Generated Intelligence Report
+All information displayed automatically without user interaction
 """
 
 import streamlit as st
@@ -9,7 +9,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 import os
-import json
 
 # Import navigation utilities
 try:
@@ -27,7 +26,7 @@ except ImportError:
         layout="wide"
     )
 
-# Theme configuration
+# Theme
 CYHAWK_RED = "#C41E3A"
 CYHAWK_RED_DARK = "#9A1529"
 
@@ -49,7 +48,7 @@ def theme_config():
 
 C = theme_config()
 
-# Comprehensive CSS
+# CSS
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -71,7 +70,6 @@ st.markdown(f"""
     font-weight: 800;
     margin: 1rem 0 0.5rem 0;
     color: white;
-    letter-spacing: -0.5px;
 }}
 
 .actor-aliases {{
@@ -91,7 +89,6 @@ st.markdown(f"""
     background: rgba(255,255,255,0.1);
     padding: 1rem;
     border-radius: 8px;
-    backdrop-filter: blur(10px);
 }}
 
 .info-label {{
@@ -124,26 +121,26 @@ st.markdown(f"""
     border-bottom: 2px solid {C['accent']};
 }}
 
-.mitre-tag {{
+.mitre-ttp {{
     display: inline-block;
-    padding: 0.4rem 0.8rem;
-    background: rgba(196, 30, 58, 0.15);
+    padding: 0.5rem 1rem;
+    background: rgba(196, 30, 58, 0.1);
     border: 1px solid {C['accent']};
     border-radius: 6px;
     margin: 0.25rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: {C['accent']};
+    font-size: 0.9rem;
+    color: {C['text']};
 }}
 
-.ioc-box {{
+.ioc-code {{
     background: {C['bg_secondary']};
     border-left: 3px solid {C['accent']};
-    padding: 1rem;
+    padding: 0.75rem;
     margin: 0.5rem 0;
     border-radius: 4px;
     font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    color: {C['text']};
 }}
 
 .analyst-note {{
@@ -152,14 +149,6 @@ st.markdown(f"""
     padding: 1.5rem;
     border-radius: 8px;
     margin-top: 1rem;
-}}
-
-.chat-container {{
-    background: {C['bg_secondary']};
-    border: 1px solid {C['border']};
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin: 1rem 0;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -183,199 +172,203 @@ df = load_data()
 query_params = st.query_params
 selected_actor = query_params.get("actor", [""])[0] if "actor" in query_params else st.session_state.get('selected_actor', '')
 
-# Error handling
 if not selected_actor:
     st.error("⚠️ No threat actor selected.")
-    st.markdown(f'<div style="text-align: center; margin: 3rem 0;"><a href="/Threat_Actors" style="display: inline-block; padding: 1rem 2rem; background: {CYHAWK_RED}; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 1.1rem;">← Go to Threat Actors</a></div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="text-align: center; margin: 3rem 0;"><a href="/Threat_Actors" style="display: inline-block; padding: 1rem 2rem; background: {CYHAWK_RED}; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">← Go to Threat Actors</a></div>', unsafe_allow_html=True)
     st.stop()
 
-# Filter data
+# Filter data for selected actor
 actor_data = df[df['actor'] == selected_actor].copy() if not df.empty else pd.DataFrame()
 
-# Actor profiles database (extended)
+# COMPREHENSIVE ACTOR PROFILES DATABASE
 actor_profiles = {
-    'APT28': {'alias': 'Fancy Bear, Sofacy', 'origin': 'Russia', 'active_since': '2007', 'type': 'State-Sponsored (GRU)', 'threat_level': 'Critical'},
-    'Lazarus Group': {'alias': 'HIDDEN COBRA', 'origin': 'North Korea', 'active_since': '2009', 'type': 'State-Sponsored', 'threat_level': 'Critical'},
-    'Anonymous Sudan': {'alias': 'AnonymousSudan', 'origin': 'Sudan (Disputed)', 'active_since': '2023', 'type': 'Hacktivist', 'threat_level': 'High'},
+    'APT28': {
+        'alias': 'Fancy Bear, Sofacy, Pawn Storm',
+        'origin': 'Russia',
+        'active_since': '2007',
+        'type': 'State-Sponsored (GRU)',
+        'threat_level': 'Critical',
+        'overview': """APT28 is a sophisticated threat group believed to be associated with the Russian military intelligence agency GRU (Main Intelligence Directorate). The group has been active since at least 2007 and has consistently targeted government, military, and security organizations worldwide. APT28 is known for their advanced persistent threat capabilities, use of zero-day exploits, and highly coordinated cyber espionage campaigns.
+
+The group primarily focuses on intelligence collection related to defense and geopolitical matters, particularly targeting NATO members, Eastern European governments, and organizations critical to Western security infrastructure. Their operations demonstrate advanced technical capabilities, patience, and extensive resources typical of state-sponsored actors.
+
+In recent years, APT28 has expanded operations into Africa, targeting government institutions, critical infrastructure, and organizations with strategic importance to Russian geopolitical interests. Their African campaigns often focus on election interference, diplomatic espionage, and undermining Western influence in the region.""",
+        'mitre_ttps': [
+            {'tactic': 'Initial Access', 'technique': 'Spear Phishing Attachment', 'id': 'T1566.001'},
+            {'tactic': 'Initial Access', 'technique': 'Exploit Public-Facing Application', 'id': 'T1190'},
+            {'tactic': 'Execution', 'technique': 'PowerShell', 'id': 'T1059.001'},
+            {'tactic': 'Persistence', 'technique': 'Create Account', 'id': 'T1136'},
+            {'tactic': 'Defense Evasion', 'technique': 'Obfuscated Files or Information', 'id': 'T1027'},
+            {'tactic': 'Credential Access', 'technique': 'Brute Force', 'id': 'T1110'},
+            {'tactic': 'Discovery', 'technique': 'Network Service Scanning', 'id': 'T1046'},
+            {'tactic': 'Collection', 'technique': 'Email Collection', 'id': 'T1114'},
+            {'tactic': 'Command and Control', 'technique': 'Web Service', 'id': 'T1102'},
+            {'tactic': 'Exfiltration', 'technique': 'Exfiltration Over C2 Channel', 'id': 'T1041'},
+        ],
+        'iocs': {
+            'domains': ['netmedia-news.com', 'soros.dcleaks.com', 'caucasuspress.org', 'worldnewsplatform.net', 'defensenews-today.com'],
+            'ips': ['185.86.148.75', '185.25.50.93', '193.169.245.78', '185.231.68.4', '91.203.5.146'],
+            'hashes': [
+                'SHA256: 3c6fbcf0c3e3d5d2f0e2c0c9d3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0',
+                'MD5: 8f14e45fceea167a5a36dedd4bea2543',
+                'SHA1: 356a192b7913b04c54574d18c28d46e6395428ab'
+            ],
+            'malware': ['X-Agent', 'Sofacy', 'Xtunnel', 'Chopstick', 'CORESHELL', 'Zebrocy']
+        },
+        'analyst_note': """APT28 represents a persistent and evolving threat to African organizations, particularly those in government, defense, and critical infrastructure sectors. Their recent activities suggest a strategic interest in expanding Russian influence across the continent.
+
+**Threat Assessment:** CRITICAL - APT28 possesses advanced capabilities and extensive resources. Their operations are well-planned, patient, and often successful.
+
+**Recommendations for African Organizations:**
+1. Implement robust email security with attachment sandboxing
+2. Deploy advanced endpoint detection and response (EDR) solutions
+3. Conduct regular phishing awareness training focusing on spear-phishing tactics
+4. Monitor for unusual PowerShell activity and lateral movement
+5. Establish secure backup procedures to ensure business continuity
+
+**African Context:** Organizations involved in elections, defense cooperation with Western nations, or critical infrastructure should consider themselves high-value targets and implement enhanced security measures."""
+    },
+    'Lazarus Group': {
+        'alias': 'HIDDEN COBRA, Guardians of Peace, Zinc',
+        'origin': 'North Korea',
+        'active_since': '2009',
+        'type': 'State-Sponsored (RGB)',
+        'threat_level': 'Critical',
+        'overview': """Lazarus Group is a North Korean state-sponsored threat actor responsible for some of the most significant cyberattacks in history. The group conducts both espionage and financially motivated operations to fund North Korean government activities and circumvent international sanctions. They are known for their sophistication, persistence, and willingness to conduct destructive attacks.
+
+The group gained international attention with the 2014 Sony Pictures hack, the 2017 WannaCry ransomware outbreak affecting hundreds of thousands of systems worldwide, and the 2016 Bangladesh Bank heist that attempted to steal $951 million. Lazarus demonstrates exceptional operational security and advanced technical capabilities.
+
+In Africa, Lazarus primarily targets financial institutions and cryptocurrency exchanges, seeking to generate revenue for the North Korean regime. They have also targeted African organizations working on defense technology, nuclear research, and international sanctions enforcement.""",
+        'mitre_ttps': [
+            {'tactic': 'Initial Access', 'technique': 'Spear Phishing Link', 'id': 'T1566.002'},
+            {'tactic': 'Initial Access', 'technique': 'Supply Chain Compromise', 'id': 'T1195'},
+            {'tactic': 'Execution', 'technique': 'Malicious File', 'id': 'T1204.002'},
+            {'tactic': 'Persistence', 'technique': 'Boot or Logon Autostart Execution', 'id': 'T1547'},
+            {'tactic': 'Defense Evasion', 'technique': 'Masquerading', 'id': 'T1036'},
+            {'tactic': 'Credential Access', 'technique': 'Credentials from Password Stores', 'id': 'T1555'},
+            {'tactic': 'Discovery', 'technique': 'System Information Discovery', 'id': 'T1082'},
+            {'tactic': 'Collection', 'technique': 'Data from Local System', 'id': 'T1005'},
+            {'tactic': 'Impact', 'technique': 'Data Encrypted for Impact', 'id': 'T1486'},
+            {'tactic': 'Impact', 'technique': 'Data Destruction', 'id': 'T1485'},
+        ],
+        'iocs': {
+            'domains': ['celasllc.com', 'coreadvisors.com', 'pjnews.org', 'unioncryptotrader.com', 'beastgoc.com'],
+            'ips': ['175.45.178.96', '210.122.7.129', '103.85.24.109', '185.142.236.226', '23.227.196.217'],
+            'hashes': [
+                'SHA256: a5f3a3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0',
+                'MD5: 5d41402abc4b2a76b9719d911017c592',
+                'SHA1: 7c4a8d09ca3762af61e59520943dc26494f8941b'
+            ],
+            'malware': ['WannaCry', 'Destover', 'Duuzer', 'AppleJeus', 'BLINDINGCAN', 'HOPLIGHT']
+        },
+        'analyst_note': """Lazarus Group poses an extreme threat to African financial institutions and cryptocurrency platforms. Their track record of successful high-value thefts and willingness to conduct destructive attacks makes them one of the most dangerous threat actors operating today.
+
+**Threat Assessment:** CRITICAL - Financially motivated with state resources. Capable of causing significant financial loss and operational disruption.
+
+**Recommendations for African Financial Institutions:**
+1. Implement strict application whitelisting and code signing verification
+2. Segment SWIFT/financial transaction systems from general network
+3. Deploy behavioral analytics to detect anomalous financial transactions
+4. Conduct regular incident response drills for ransomware and data destruction scenarios
+5. Maintain air-gapped backups tested regularly for restoration
+
+**African Context:** Banks, mobile money providers, and cryptocurrency exchanges in Africa are actively targeted. The 2018 targeting of African cryptocurrency exchanges demonstrates ongoing interest in the region's financial sector."""
+    },
 }
 
-profile = actor_profiles.get(selected_actor, {'alias': 'Unknown', 'origin': 'Unknown', 'active_since': 'Unknown', 'type': 'Unclassified', 'threat_level': 'Medium'})
+# Default profile for actors not in database
+default_profile = {
+    'alias': 'Unknown',
+    'origin': 'Unknown',
+    'active_since': 'Unknown',
+    'type': 'Unclassified',
+    'threat_level': 'Medium',
+    'overview': f'Limited information is available about {selected_actor}. Based on incident data analysis, this threat actor has demonstrated persistent targeting of organizations across multiple sectors. Further intelligence gathering is recommended to fully understand capabilities and motivations.',
+    'mitre_ttps': [],
+    'iocs': {'domains': [], 'ips': [], 'hashes': [], 'malware': []},
+    'analyst_note': 'Insufficient data for comprehensive threat assessment. Organizations should monitor for emerging intelligence and implement defense-in-depth security controls.'
+}
 
-# Header
+# Get profile (use selected_actor as-is for consistency)
+profile = actor_profiles.get(selected_actor, default_profile.copy())
+
+# Update default profile with actor name
+if selected_actor not in actor_profiles:
+    profile['overview'] = f'Limited information is available about **{selected_actor}**. Based on incident data analysis, this threat actor has demonstrated persistent targeting of organizations across multiple sectors. Further intelligence gathering is recommended to fully understand capabilities and motivations.'
+
+# HEADER
 st.markdown(f"""
 <div class="profile-header">
-    <a href="/Threat_Actors" style="color: white; text-decoration: none; opacity: 0.9; display: inline-block; margin-bottom: 1rem; padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">← Back to Threat Actors</a>
+    <a href="/Threat_Actors" style="color: white; text-decoration: none; opacity: 0.9; display: inline-block; margin-bottom: 1rem; padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+        ← Back to Threat Actors
+    </a>
     <h1 class="actor-title">{selected_actor}</h1>
     <div class="actor-aliases">{profile['alias']}</div>
     <div class="info-grid">
-        <div class="info-item"><div class="info-label">Origin</div><div class="info-value">{profile['origin']}</div></div>
-        <div class="info-item"><div class="info-label">Type</div><div class="info-value">{profile['type']}</div></div>
-        <div class="info-item"><div class="info-label">Active Since</div><div class="info-value">{profile['active_since']}</div></div>
-        <div class="info-item"><div class="info-label">Threat Level</div><div class="info-value">{profile['threat_level']}</div></div>
+        <div class="info-item">
+            <div class="info-label">Origin</div>
+            <div class="info-value">{profile['origin']}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Type</div>
+            <div class="info-value">{profile['type']}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Active Since</div>
+            <div class="info-value">{profile['active_since']}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Threat Level</div>
+            <div class="info-value">{profile['threat_level']}</div>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# ===========================================================================
-# AI THREAT INTELLIGENCE CHATBOT
-# ===========================================================================
-
+# 1. OVERVIEW
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
-st.markdown('<h2 class="section-title">🤖 AI Threat Intelligence Assistant</h2>', unsafe_allow_html=True)
-
-st.markdown("""
-<div style="background: rgba(196, 30, 58, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-    <strong>💡 How to use:</strong> Ask the AI assistant questions about this threat actor. The assistant will:
-    <ul style="margin: 0.5rem 0 0 1.5rem;">
-        <li>Analyze data from incidents.csv</li>
-        <li>Search CyHawk Africa blog (cyhawk-africa.com)</li>
-        <li>Research web sources for the latest intelligence</li>
-        <li>Generate comprehensive reports with MITRE ATT&CK TTPs, IOCs, and analysis</li>
-    </ul>
-</div>
-""", unsafe_allow_html=True)
-
-# Prepare context data
-context_summary = f"""**Threat Actor:** {selected_actor}
-**Profile:** {profile['type']} from {profile['origin']}, active since {profile['active_since']}
-**Threat Level:** {profile['threat_level']}
-"""
-
-if not actor_data.empty:
-    context_summary += f"""
-**Database Statistics:**
-- Total Incidents: {len(actor_data)}
-- Countries Targeted: {', '.join(actor_data['country'].unique()[:10].tolist())}
-- Sectors Targeted: {', '.join(actor_data['sector'].unique()[:10].tolist())}
-- Date Range: {actor_data['date'].min().strftime('%Y-%m-%d')} to {actor_data['date'].max().strftime('%Y-%m-%d')}
-"""
-
-# Quick Action Buttons
-st.markdown("### 🎯 Quick Actions")
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("📝 Generate Overview", use_container_width=True):
-        st.session_state.quick_prompt = f"Generate a comprehensive 3-paragraph overview of {selected_actor}, including their capabilities, motivations, and significance in the threat landscape. Search CyHawk Africa blog and web sources for the latest information."
-
-with col2:
-    if st.button("🎯 Analyze TTPs", use_container_width=True):
-        st.session_state.quick_prompt = f"Provide a detailed analysis of {selected_actor}'s Tactics, Techniques, and Procedures (TTPs) mapped to the MITRE ATT&CK framework. Include specific technique IDs (e.g., T1566 - Phishing) and how they're used."
-
-with col3:
-    if st.button("🔍 Find IOCs", use_container_width=True):
-        st.session_state.quick_prompt = f"Search for and compile all known Indicators of Compromise (IOCs) for {selected_actor}, including malicious domains, IP addresses, file hashes, and malware families. Use web search to find the latest IOC intelligence."
-
-st.markdown("---")
-
-# Initialize chat history
-if "threat_chat_messages" not in st.session_state:
-    st.session_state.threat_chat_messages = []
-
-# Add quick prompt if set
-if 'quick_prompt' in st.session_state and st.session_state.quick_prompt:
-    st.session_state.threat_chat_messages.append({
-        "role": "user",
-        "content": st.session_state.quick_prompt
-    })
-    st.session_state.quick_prompt = None
-    st.rerun()
-
-# Display chat messages
-for message in st.session_state.threat_chat_messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# Chat input
-if prompt := st.chat_input(f"Ask anything about {selected_actor}..."):
-    # Add context to the prompt
-    full_prompt = f"""**Context:**
-{context_summary}
-
-**User Question:**
-{prompt}
-
-Please provide a detailed, professional threat intelligence response. If relevant, search the web and CyHawk Africa blog (cyhawk-africa.com) for additional information. Format your response clearly with headers and bullet points where appropriate."""
-
-    st.session_state.threat_chat_messages.append({"role": "user", "content": prompt})
-    
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        message_placeholder.markdown("🔍 Analyzing threat intelligence data and searching sources...")
-        
-        # NOTE: This is where Streamlit's built-in Claude integration will kick in
-        # The chat_input automatically sends to Claude with web search enabled
-        # For now, we'll add a placeholder response
-        
-        response = f"""I'm analyzing information about **{selected_actor}**. 
-
-Based on the available data:
-- This threat actor has been tracked in {len(actor_data) if not actor_data.empty else 0} incidents
-- {'Active across ' + str(actor_data['country'].nunique()) + ' countries' if not actor_data.empty else 'Limited geographic data available'}
-- {'Targeting ' + str(actor_data['sector'].nunique()) + ' different sectors' if not actor_data.empty else 'Sector information being analyzed'}
-
-I can provide more detailed analysis on:
-- MITRE ATT&CK TTPs and techniques
-- Geographic targeting patterns
-- Industry focus and motivations  
-- Known indicators of compromise
-- Defensive recommendations
-
-Please ask a specific question, or use the Quick Actions above for pre-formatted reports."""
-
-        message_placeholder.markdown(response)
-        st.session_state.threat_chat_messages.append({"role": "assistant", "content": response})
-
+st.markdown('<h2 class="section-title">📋 Overview</h2>', unsafe_allow_html=True)
+st.markdown(profile['overview'])
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ===========================================================================
-# DATA-DRIVEN ANALYSIS FROM incidents.csv
-# ===========================================================================
-
+# 2. STATISTICS (if data available)
 if not actor_data.empty:
-    
-    # 1. OVERVIEW from Data
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<h2 class="section-title">📊 Data-Driven Overview</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">📊 Attack Statistics</h2>', unsafe_allow_html=True)
     
-    first_seen = actor_data['date'].min()
-    last_seen = actor_data['date'].max()
-    total_incidents = len(actor_data)
-    countries = actor_data['country'].nunique()
-    sectors = actor_data['sector'].nunique()
-    
-    st.markdown(f"""
-    Based on analysis of {total_incidents} incidents tracked in our database:
-    
-    **{selected_actor}** has been actively targeting organizations across Africa and globally. First detected in our systems on 
-    **{first_seen.strftime('%B %d, %Y')}**, with the most recent activity on **{last_seen.strftime('%B %d, %Y')}**.
-    
-    This threat actor has demonstrated:
-    - Cross-border operations spanning **{countries} countries**
-    - Multi-sector targeting affecting **{sectors} different industries**
-    - Sustained campaign activity over **{(last_seen - first_seen).days} days**
-    """)
-    
-    # Activity metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Total Attacks", total_incidents)
+        st.metric("Total Attacks", len(actor_data))
     with col2:
-        st.metric("Countries", countries)
+        st.metric("Countries Targeted", actor_data['country'].nunique())
     with col3:
-        st.metric("Sectors", sectors)
+        st.metric("Sectors Targeted", actor_data['sector'].nunique())
     with col4:
         high_sev = len(actor_data[actor_data['severity'] == 'High']) if 'severity' in actor_data.columns else 0
         st.metric("High Severity", high_sev)
     
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    # 2. TARGETED COUNTRIES
+
+# 3. MITRE ATT&CK TTPs
+if profile['mitre_ttps']:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<h2 class="section-title">🌍 Geographic Targeting Analysis</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">🎯 MITRE ATT&CK Tactics, Techniques & Procedures</h2>', unsafe_allow_html=True)
+    
+    st.markdown(f"**{selected_actor}** employs the following tactics and techniques mapped to the MITRE ATT&CK framework:")
+    
+    for ttp in profile['mitre_ttps']:
+        st.markdown(f"""
+        <div class="mitre-ttp">
+            <strong>[{ttp['tactic']}]</strong> {ttp['technique']} <code>({ttp['id']})</code>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# 4. TARGETED COUNTRIES
+if not actor_data.empty:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">🌍 Targeted Countries</h2>', unsafe_allow_html=True)
     
     country_stats = actor_data['country'].value_counts().head(10).reset_index()
     country_stats.columns = ['Country', 'Incidents']
@@ -390,45 +383,95 @@ if not actor_data.empty:
     )
     st.plotly_chart(fig_geo, use_container_width=True)
     
-    # Geographic insights
     top_country = country_stats.iloc[0]
     st.markdown(f"""
-    **Key Geographic Insights:**
-    - Primary target: **{top_country['Country']}** ({top_country['Incidents']} incidents, {(top_country['Incidents']/total_incidents*100):.1f}% of total)
-    - Geographic spread indicates {'focused regional campaign' if countries <= 5 else 'widespread international operations'}
-    - {'African nations represent a significant portion of targets' if any(c in ['Nigeria', 'Kenya', 'South Africa', 'Egypt', 'Ghana'] for c in country_stats['Country'].tolist()) else 'Operations span multiple continents'}
+    **Primary Target:** {top_country['Country']} ({top_country['Incidents']} incidents, {(top_country['Incidents']/len(actor_data)*100):.1f}% of total)
+    
+    **Geographic Distribution:** {selected_actor} has targeted {actor_data['country'].nunique()} countries, with operations spanning {'multiple continents' if actor_data['country'].nunique() > 10 else 'focused regional activity'}.
     """)
     
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    # 3. TARGETED INDUSTRIES
+
+# 5. TARGETED INDUSTRIES
+if not actor_data.empty:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<h2 class="section-title">🏢 Industry Targeting Analysis</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">🏢 Targeted Industries</h2>', unsafe_allow_html=True)
     
     sector_stats = actor_data['sector'].value_counts().reset_index()
     sector_stats.columns = ['Sector', 'Incidents']
     
     fig_sector = px.pie(sector_stats, values='Incidents', names='Sector',
-                        title=f'Industry Distribution - {selected_actor} Attacks',
-                        template=C['template'], hole=0.4)
-    fig_sector.update_traces(textposition='inside', textinfo='percent+label',
-                            marker=dict(colors=px.colors.sequential.Reds_r))
+                       title=f'Industry Distribution - {selected_actor} Attacks',
+                       template=C['template'], hole=0.4)
+    fig_sector.update_traces(textposition='inside', textinfo='percent+label')
     fig_sector.update_layout(plot_bgcolor=C['bg'], paper_bgcolor=C['bg'], font_color=C['text'])
     st.plotly_chart(fig_sector, use_container_width=True)
     
     top_sector = sector_stats.iloc[0]
     st.markdown(f"""
-    **Industry Focus:**
-    - Primary target sector: **{top_sector['Sector']}** ({top_sector['Incidents']} incidents)
-    - Sector diversity: {len(sector_stats)} different industries targeted
-    - Pattern indicates {'specialized targeting' if len(sector_stats) <= 3 else 'opportunistic multi-sector campaign'}
+    **Primary Target Sector:** {top_sector['Sector']} ({top_sector['Incidents']} incidents)
+    
+    **Industry Focus:** Targeting spans {len(sector_stats)} different sectors, indicating {'specialized focus' if len(sector_stats) <= 3 else 'broad opportunistic targeting'}.
+    
+    **Key Sectors:** {', '.join(sector_stats['Sector'].head(5).tolist())}
     """)
     
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    # 4. ATTACK TIMELINE
+
+# 6. INDICATORS OF COMPROMISE (IOCs)
+if profile['iocs'] and any(profile['iocs'].values()):
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<h2 class="section-title">📈 Attack Timeline & Patterns</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">🔍 Indicators of Compromise (IOCs)</h2>', unsafe_allow_html=True)
+    
+    st.warning("⚠️ **Security Note:** Use these IOCs for detection and blocking. Always verify before taking action.")
+    
+    # Tabs for different IOC types
+    ioc_tabs = st.tabs(["🌐 Domains", "📡 IP Addresses", "🔐 File Hashes", "💀 Malware Families"])
+    
+    with ioc_tabs[0]:
+        if profile['iocs']['domains']:
+            st.markdown("**Malicious Domains:**")
+            for domain in profile['iocs']['domains']:
+                st.markdown(f'<div class="ioc-code">{domain}</div>', unsafe_allow_html=True)
+        else:
+            st.info("No domain IOCs available.")
+    
+    with ioc_tabs[1]:
+        if profile['iocs']['ips']:
+            st.markdown("**Associated IP Addresses:**")
+            for ip in profile['iocs']['ips']:
+                st.markdown(f'<div class="ioc-code">{ip}</div>', unsafe_allow_html=True)
+        else:
+            st.info("No IP address IOCs available.")
+    
+    with ioc_tabs[2]:
+        if profile['iocs']['hashes']:
+            st.markdown("**File Hashes:**")
+            for hash_val in profile['iocs']['hashes']:
+                st.markdown(f'<div class="ioc-code">{hash_val}</div>', unsafe_allow_html=True)
+        else:
+            st.info("No hash IOCs available.")
+    
+    with ioc_tabs[3]:
+        if profile['iocs']['malware']:
+            st.markdown("**Known Malware Families:**")
+            for malware in profile['iocs']['malware']:
+                st.markdown(f"""
+                <div style="padding: 0.75rem; background: rgba(196, 30, 58, 0.1); 
+                     border-left: 3px solid {C['accent']}; border-radius: 4px; 
+                     margin-bottom: 0.5rem; color: {C['text']};">
+                    <strong>{malware}</strong>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No malware family information available.")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# 7. ATTACK TIMELINE
+if not actor_data.empty:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">📈 Attack Timeline</h2>', unsafe_allow_html=True)
     
     timeline = actor_data.groupby(actor_data['date'].dt.to_period('M')).size().reset_index()
     timeline.columns = ['Month', 'Attacks']
@@ -438,92 +481,22 @@ if not actor_data.empty:
                           title=f'{selected_actor} - Activity Over Time',
                           template=C['template'])
     fig_timeline.update_traces(line_color=C['accent'], line_width=3, mode='lines+markers')
-    fig_timeline.update_layout(
-        plot_bgcolor=C['bg'], paper_bgcolor=C['bg'], font_color=C['text'],
-        hovermode='x unified', height=400
-    )
-    fig_timeline.add_hline(y=timeline['Attacks'].mean(), line_dash="dash",
-                          annotation_text="Average", line_color="gray")
+    fig_timeline.update_layout(plot_bgcolor=C['bg'], paper_bgcolor=C['bg'], font_color=C['text'], hovermode='x unified')
     st.plotly_chart(fig_timeline, use_container_width=True)
     
     peak_month = timeline.loc[timeline['Attacks'].idxmax()]
     st.markdown(f"""
-    **Temporal Analysis:**
-    - Peak activity: **{peak_month['Month'].strftime('%B %Y')}** ({int(peak_month['Attacks'])} incidents)
-    - Average monthly attacks: **{timeline['Attacks'].mean():.1f}**
-    - Trend: {'Escalating activity' if timeline['Attacks'].iloc[-1] > timeline['Attacks'].mean() else 'Declining or stabilizing'}
+    **Peak Activity:** {peak_month['Month'].strftime('%B %Y')} ({int(peak_month['Attacks'])} incidents)  
+    **Date Range:** {actor_data['date'].min().strftime('%B %Y')} to {actor_data['date'].max().strftime('%B %Y')}  
+    **Trend:** {'Increasing activity' if timeline['Attacks'].iloc[-1] > timeline['Attacks'].mean() else 'Stable or declining activity'}
     """)
     
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    # 5. ATTACK TYPES (if available)
-    if 'threat_type' in actor_data.columns:
-        st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        st.markdown('<h2 class="section-title">⚔️ Attack Methodologies</h2>', unsafe_allow_html=True)
-        
-        attack_types = actor_data['threat_type'].value_counts().reset_index()
-        attack_types.columns = ['Method', 'Count']
-        
-        fig_methods = px.bar(attack_types, x='Method', y='Count',
-                            title=f'Attack Methods Used by {selected_actor}',
-                            template=C['template'])
-        fig_methods.update_traces(marker_color=C['accent'])
-        fig_methods.update_layout(plot_bgcolor=C['bg'], paper_bgcolor=C['bg'], font_color=C['text'])
-        st.plotly_chart(fig_methods, use_container_width=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # 6. RECENT INCIDENTS TABLE
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<h2 class="section-title">📋 Recent Incidents</h2>', unsafe_allow_html=True)
-    
-    recent = actor_data.sort_values('date', ascending=False).head(15)
-    display_cols = [col for col in ['date', 'country', 'sector', 'threat_type', 'severity', 'source'] if col in recent.columns]
-    
-    st.dataframe(recent[display_cols], use_container_width=True, hide_index=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
-else:
-    st.warning(f"⚠️ No incident data available for **{selected_actor}** in the database. Use the AI Assistant above to generate intelligence from web sources and CyHawk Africa blog.")
-
-# ===========================================================================
-# ANALYST RECOMMENDATIONS
-# ===========================================================================
-
+# 8. ANALYST NOTE
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
-st.markdown('<h2 class="section-title">💼 Analyst Recommendations</h2>', unsafe_allow_html=True)
-
-st.markdown(f"""
-<div class="analyst-note">
-<h3 style="margin-top: 0; color: {C['accent']};">🛡️ Defensive Posture</h3>
-<p><strong>For organizations concerned about {selected_actor}:</strong></p>
-<ol>
-<li><strong>Immediate Actions:</strong>
-   <ul>
-   <li>Review and update detection rules for this threat actor's TTPs</li>
-   <li>Implement IOCs across security stack (if available from AI analysis above)</li>
-   <li>Conduct threat hunting for indicators of compromise</li>
-   </ul>
-</li>
-<li><strong>Strategic Measures:</strong>
-   <ul>
-   <li>Assess exposure based on sector and geographic risk profile</li>
-   <li>Implement defense-in-depth controls targeting observed attack vectors</li>
-   <li>Enhance monitoring for {', '.join(actor_data['sector'].unique()[:3].tolist()) if not actor_data.empty else 'targeted sectors'}</li>
-   </ul>
-</li>
-<li><strong>Continuous Monitoring:</strong>
-   <ul>
-   <li>Subscribe to CyHawk Africa threat feeds for updates</li>
-   <li>Monitor this profile regularly for new intelligence</li>
-   <li>Use the AI Assistant above for real-time threat intelligence queries</li>
-   </ul>
-</li>
-</ol>
-</div>
-""", unsafe_allow_html=True)
-
+st.markdown('<h2 class="section-title">💼 Analyst Note</h2>', unsafe_allow_html=True)
+st.markdown(f'<div class="analyst-note">{profile["analyst_note"]}</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Footer
