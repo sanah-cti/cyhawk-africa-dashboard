@@ -167,50 +167,110 @@ def load_data():
         return pd.DataFrame()
 
 # API Integration: Ransomware.live
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner=False)
 def fetch_ransomware_live_data(actor_name):
     """Fetch data from ransomware.live API"""
+    debug_info = []
+    
     try:
+        debug_info.append(f"🔍 Searching for: {actor_name}")
+        
         # Check if actor is ransomware-related
-        ransomware_keywords = ['ransomware', 'revil', 'lockbit', 'darkside', 'conti', 'maze', 'ryuk', 'blackcat', 'alphv']
-        if not any(keyword in actor_name.lower() for keyword in ransomware_keywords):
+        ransomware_keywords = ['ransomware', 'revil', 'lockbit', 'darkside', 'conti', 'maze', 'ryuk', 'blackcat', 'alphv', 'blackbasta']
+        is_ransomware = any(keyword in actor_name.lower() for keyword in ransomware_keywords)
+        
+        if not is_ransomware:
+            debug_info.append(f"ℹ️ {actor_name} not identified as ransomware group - skipping")
             return None
         
+        debug_info.append(f"✅ {actor_name} identified as ransomware group")
+        
         # Ransomware.live API endpoints
-        base_url = "https://api.ransomware.live/v1"
+        base_url = "https://api.ransomware.live"
+        endpoint = f"{base_url}/recentvictims"
+        
+        debug_info.append(f"🌐 Calling: {endpoint}")
         
         # Try to fetch recent victims
-        response = requests.get(f"{base_url}/recentvictims", timeout=10)
+        response = requests.get(endpoint, timeout=15)
+        debug_info.append(f"📡 Response status: {response.status_code}")
+        
         if response.status_code == 200:
             victims = response.json()
+            debug_info.append(f"📊 Total victims in API: {len(victims)}")
             
-            # Filter for specific group if possible
-            actor_variants = [actor_name.lower(), actor_name.replace(' ', '').lower()]
+            # Filter for specific group
+            actor_variants = [
+                actor_name.lower(), 
+                actor_name.replace(' ', '').lower(),
+                actor_name.replace(' ', '-').lower(),
+                actor_name.replace('-', '').lower()
+            ]
+            debug_info.append(f"🔎 Searching variants: {actor_variants}")
+            
             relevant_victims = [
                 v for v in victims 
                 if any(variant in v.get('group_name', '').lower() for variant in actor_variants)
             ]
             
+            debug_info.append(f"✅ Found {len(relevant_victims)} victims for {actor_name}")
+            
+            if len(relevant_victims) > 0:
+                debug_info.append(f"📝 Sample groups found: {[v.get('group_name') for v in relevant_victims[:3]]}")
+            
+            # Show debug info
+            with st.expander("🐛 Ransomware.live Debug Info"):
+                for info in debug_info:
+                    st.write(info)
+            
             return {
                 'recent_victims': relevant_victims[:10],
                 'total_victims': len(relevant_victims),
-                'active': len(relevant_victims) > 0
+                'active': len(relevant_victims) > 0,
+                'debug': debug_info
             }
+        else:
+            debug_info.append(f"❌ API returned status {response.status_code}")
+            debug_info.append(f"Response: {response.text[:200]}")
+            
+            with st.expander("🐛 Ransomware.live Debug Info"):
+                for info in debug_info:
+                    st.write(info)
+                    
     except Exception as e:
-        st.warning(f"Could not fetch ransomware.live data: {str(e)}")
+        debug_info.append(f"❌ Error: {str(e)}")
+        
+        with st.expander("🐛 Ransomware.live Debug Info"):
+            for info in debug_info:
+                st.write(info)
+            st.exception(e)
+    
     return None
 
 # API Integration: AlienVault OTX
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner=False)
 def fetch_alienvault_otx_data(actor_name):
     """Fetch threat intelligence from AlienVault OTX"""
+    debug_info = []
+    
     try:
+        debug_info.append(f"🔍 Searching OTX for: {actor_name}")
+        
         # Get API key from Streamlit secrets
         api_key = st.secrets.get("ALIENVAULT_OTX_API_KEY", "")
         
         if not api_key:
-            st.info("💡 AlienVault OTX API key not configured. Add it to secrets to enable threat intelligence.")
+            debug_info.append("❌ API key not found in secrets")
+            debug_info.append("Add ALIENVAULT_OTX_API_KEY to Streamlit secrets")
+            
+            with st.expander("🐛 AlienVault OTX Debug Info"):
+                for info in debug_info:
+                    st.write(info)
+                st.info("💡 Get your API key from: https://otx.alienvault.com/ → Settings → API Integration")
+            
             return None
+        
+        debug_info.append(f"✅ API key found: {api_key[:8]}...{api_key[-4:]}")
         
         base_url = "https://otx.alienvault.com/api/v1"
         
@@ -227,10 +287,16 @@ def fetch_alienvault_otx_data(actor_name):
             'limit': 10
         }
         
-        response = requests.get(search_url, params=params, headers=headers, timeout=10)
+        debug_info.append(f"🌐 Calling: {search_url}")
+        debug_info.append(f"🔎 Query: {actor_name}")
+        
+        response = requests.get(search_url, params=params, headers=headers, timeout=15)
+        debug_info.append(f"📡 Response status: {response.status_code}")
+        
         if response.status_code == 200:
             data = response.json()
             pulses = data.get('results', [])
+            debug_info.append(f"📊 Found {len(pulses)} pulses")
             
             # Extract IOCs from pulses
             all_iocs = {
@@ -254,16 +320,53 @@ def fetch_alienvault_otx_data(actor_name):
                     elif ioc_type == 'URL':
                         all_iocs['urls'].append(ioc_value)
             
+            debug_info.append(f"🔗 Extracted {len(all_iocs['domains'])} domains")
+            debug_info.append(f"🌐 Extracted {len(all_iocs['ips'])} IPs")
+            debug_info.append(f"🔐 Extracted {len(all_iocs['hashes'])} hashes")
+            debug_info.append(f"📎 Extracted {len(all_iocs['urls'])} URLs")
+            
+            # Show debug info
+            with st.expander("🐛 AlienVault OTX Debug Info"):
+                for info in debug_info:
+                    st.write(info)
+                if pulses:
+                    st.write("**Sample pulse names:**")
+                    for p in pulses[:3]:
+                        st.write(f"- {p.get('name')}")
+            
             return {
                 'pulses': pulses,
                 'iocs': all_iocs,
-                'pulse_count': len(pulses)
+                'pulse_count': len(pulses),
+                'debug': debug_info
             }
+            
         elif response.status_code == 403:
-            st.warning("⚠️ AlienVault OTX API key is invalid or expired.")
+            debug_info.append("❌ Authentication failed (403)")
+            debug_info.append("API key may be invalid or expired")
+            
+            with st.expander("🐛 AlienVault OTX Debug Info"):
+                for info in debug_info:
+                    st.write(info)
+                st.error("Please verify your API key at: https://otx.alienvault.com/")
+            
             return None
+        else:
+            debug_info.append(f"❌ Unexpected status: {response.status_code}")
+            debug_info.append(f"Response: {response.text[:200]}")
+            
+            with st.expander("🐛 AlienVault OTX Debug Info"):
+                for info in debug_info:
+                    st.write(info)
+            
     except Exception as e:
-        st.warning(f"Could not fetch AlienVault OTX data: {str(e)}")
+        debug_info.append(f"❌ Error: {str(e)}")
+        
+        with st.expander("🐛 AlienVault OTX Debug Info"):
+            for info in debug_info:
+                st.write(info)
+            st.exception(e)
+    
     return None
 
 df = load_data()
