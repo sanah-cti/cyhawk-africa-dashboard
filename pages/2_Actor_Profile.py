@@ -9,6 +9,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 import os
+import requests
 
 # Import navigation utilities
 try:
@@ -166,11 +167,109 @@ def load_data():
     except:
         return pd.DataFrame()
 
+# API Integration: Ransomware.live
+@st.cache_data(ttl=3600)
+def fetch_ransomware_live_data(actor_name):
+    """Fetch data from ransomware.live API"""
+    try:
+        # Check if actor is ransomware-related
+        ransomware_keywords = ['ransomware', 'revil', 'lockbit', 'darkside', 'conti', 'maze', 'ryuk', 'blackcat', 'alphv']
+        if not any(keyword in actor_name.lower() for keyword in ransomware_keywords):
+            return None
+        
+        # Ransomware.live API endpoints
+        base_url = "https://api.ransomware.live/v1"
+        
+        # Try to fetch recent victims
+        response = requests.get(f"{base_url}/recentvictims", timeout=10)
+        if response.status_code == 200:
+            victims = response.json()
+            
+            # Filter for specific group if possible
+            actor_variants = [actor_name.lower(), actor_name.replace(' ', '').lower()]
+            relevant_victims = [
+                v for v in victims 
+                if any(variant in v.get('group_name', '').lower() for variant in actor_variants)
+            ]
+            
+            return {
+                'recent_victims': relevant_victims[:10],
+                'total_victims': len(relevant_victims),
+                'active': len(relevant_victims) > 0
+            }
+    except Exception as e:
+        st.warning(f"Could not fetch ransomware.live data: {str(e)}")
+    return None
+
+# API Integration: AlienVault OTX
+@st.cache_data(ttl=3600)
+def fetch_alienvault_otx_data(actor_name):
+    """Fetch threat intelligence from AlienVault OTX"""
+    try:
+        base_url = "https://otx.alienvault.com/api/v1"
+        
+        # Search for pulses related to the actor
+        search_url = f"{base_url}/search/pulses"
+        params = {
+            'q': actor_name,
+            'page': 1,
+            'limit': 10
+        }
+        
+        response = requests.get(search_url, params=params, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            pulses = data.get('results', [])
+            
+            # Extract IOCs from pulses
+            all_iocs = {
+                'domains': [],
+                'ips': [],
+                'hashes': [],
+                'urls': []
+            }
+            
+            for pulse in pulses:
+                for indicator in pulse.get('indicators', []):
+                    ioc_type = indicator.get('type', '')
+                    ioc_value = indicator.get('indicator', '')
+                    
+                    if ioc_type == 'domain':
+                        all_iocs['domains'].append(ioc_value)
+                    elif ioc_type in ['IPv4', 'IPv6']:
+                        all_iocs['ips'].append(ioc_value)
+                    elif ioc_type in ['FileHash-MD5', 'FileHash-SHA1', 'FileHash-SHA256']:
+                        all_iocs['hashes'].append(f"{ioc_type}: {ioc_value}")
+                    elif ioc_type == 'URL':
+                        all_iocs['urls'].append(ioc_value)
+            
+            return {
+                'pulses': pulses,
+                'iocs': all_iocs,
+                'pulse_count': len(pulses)
+            }
+    except Exception as e:
+        st.warning(f"Could not fetch AlienVault OTX data: {str(e)}")
+    return None
+
 df = load_data()
 
-# Get selected actor
+# Get selected actor from query params
 query_params = st.query_params
-selected_actor = query_params.get("actor", [""])[0] if "actor" in query_params else st.session_state.get('selected_actor', '')
+selected_actor = ""
+
+# Try to get from query params
+if "actor" in query_params:
+    actor_param = query_params.get("actor")
+    # Handle both list and string responses
+    if isinstance(actor_param, list):
+        selected_actor = actor_param[0] if actor_param else ""
+    else:
+        selected_actor = actor_param
+        
+# Fallback to session state
+if not selected_actor:
+    selected_actor = st.session_state.get('selected_actor', '')
 
 if not selected_actor:
     st.error("⚠️ No threat actor selected.")
@@ -465,6 +564,91 @@ if profile['iocs'] and any(profile['iocs'].values()):
                 """, unsafe_allow_html=True)
         else:
             st.info("No malware family information available.")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# 6.5. RANSOMWARE.LIVE DATA (if applicable)
+with st.spinner("🔍 Checking ransomware.live..."):
+    ransomware_data = fetch_ransomware_live_data(selected_actor)
+
+if ransomware_data and ransomware_data.get('total_victims', 0) > 0:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">🎯 Recent Ransomware Victims (ransomware.live)</h2>', unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    **Status:** {'🔴 ACTIVE' if ransomware_data['active'] else '⚪ Inactive'}  
+    **Total Victims Tracked:** {ransomware_data['total_victims']}
+    """)
+    
+    if ransomware_data.get('recent_victims'):
+        st.markdown("### Recent Victims:")
+        for victim in ransomware_data['recent_victims']:
+            st.markdown(f"""
+            <div style="padding: 0.75rem; background: {C['bg_secondary']}; border-left: 3px solid {C['accent']}; 
+                 border-radius: 4px; margin: 0.5rem 0;">
+                <strong>{victim.get('post_title', 'Unknown')}</strong><br>
+                <small>Country: {victim.get('country', 'Unknown')} | 
+                Discovered: {victim.get('discovered', 'Unknown')}</small>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# 6.6. ALIENVAULT OTX THREAT INTELLIGENCE
+with st.spinner("🔍 Fetching AlienVault OTX intelligence..."):
+    otx_data = fetch_alienvault_otx_data(selected_actor)
+
+if otx_data and otx_data.get('pulse_count', 0) > 0:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">🛡️ AlienVault OTX Threat Intelligence</h2>', unsafe_allow_html=True)
+    
+    st.markdown(f"**Threat Pulses Found:** {otx_data['pulse_count']}")
+    
+    # Display recent pulses
+    st.markdown("### Recent Threat Pulses:")
+    for pulse in otx_data['pulses'][:5]:
+        st.markdown(f"""
+        <div style="padding: 1rem; background: {C['bg_secondary']}; border-radius: 8px; margin: 0.5rem 0;">
+            <strong>{pulse.get('name', 'Unknown')}</strong><br>
+            <small>Created: {pulse.get('created', 'Unknown')[:10]} | 
+            Indicators: {len(pulse.get('indicators', []))}</small><br>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem;">{pulse.get('description', '')[:200]}...</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Display additional IOCs from OTX
+    if otx_data.get('iocs'):
+        st.markdown("### Additional IOCs from AlienVault OTX:")
+        
+        otx_ioc_tabs = st.tabs(["Domains", "IPs", "Hashes", "URLs"])
+        
+        with otx_ioc_tabs[0]:
+            if otx_data['iocs']['domains']:
+                for domain in otx_data['iocs']['domains'][:20]:
+                    st.markdown(f'<div class="ioc-code">{domain}</div>', unsafe_allow_html=True)
+            else:
+                st.info("No domains found")
+        
+        with otx_ioc_tabs[1]:
+            if otx_data['iocs']['ips']:
+                for ip in otx_data['iocs']['ips'][:20]:
+                    st.markdown(f'<div class="ioc-code">{ip}</div>', unsafe_allow_html=True)
+            else:
+                st.info("No IPs found")
+        
+        with otx_ioc_tabs[2]:
+            if otx_data['iocs']['hashes']:
+                for hash_val in otx_data['iocs']['hashes'][:20]:
+                    st.markdown(f'<div class="ioc-code">{hash_val}</div>', unsafe_allow_html=True)
+            else:
+                st.info("No hashes found")
+        
+        with otx_ioc_tabs[3]:
+            if otx_data['iocs']['urls']:
+                for url in otx_data['iocs']['urls'][:20]:
+                    st.markdown(f'<div class="ioc-code">{url}</div>', unsafe_allow_html=True)
+            else:
+                st.info("No URLs found")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
