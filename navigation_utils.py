@@ -123,6 +123,5 @@ def set_page_config(page_title="CyHawk Africa Dashboard", page_icon="🔒", layo
             'Report a bug': 'https://cyhawk-africa.com/contact',
             'Support Us': 'https://buymeacoffee.com/cyhawk',
             'About': 'CyHawk Africa - Cyber Threat Intelligence Platform'
-          
         }
     )
