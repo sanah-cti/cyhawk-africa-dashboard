@@ -1,12 +1,12 @@
 """
-CyHawk Africa – Comprehensive Threat Actor Profile
+CyHawk Africa – Threat Actor Profile
 Sources:
 - incidents.csv
-- AlienVault OTX
 - ransomware.live
-Adds:
-- Normalized ransomware intelligence
-- Quantitative Risk Score
+
+Purpose:
+Generate a comprehensive, analyst-grade threat actor report
+without AlienVault OTX dependency.
 """
 
 import streamlit as st
@@ -28,7 +28,7 @@ st.set_page_config(
 CYHAWK_RED = "#C41E3A"
 
 # -------------------------------------------------------------------
-# Utilities
+# Data loading
 # -------------------------------------------------------------------
 @st.cache_data
 def load_incidents():
@@ -40,46 +40,10 @@ def load_incidents():
 
 
 @st.cache_data(ttl=3600)
-def fetch_otx(actor):
-    key = st.secrets.get("ALIENVAULT_OTX_API_KEY", "")
-    if not key:
-        return {}
-
-    r = requests.get(
-        "https://otx.alienvault.com/api/v1/search/pulses",
-        headers={"X-OTX-API-KEY": key},
-        params={"q": actor},
-        timeout=15,
-    )
-    if r.status_code != 200:
-        return {}
-
-    data = r.json().get("results", [])
-    iocs = {"domains": [], "ips": [], "hashes": [], "cves": []}
-    tags = set()
-
-    for pulse in data:
-        tags.update(pulse.get("tags", []))
-        for ind in pulse.get("indicators", []):
-            t, v = ind.get("type"), ind.get("indicator")
-            if t == "domain":
-                iocs["domains"].append(v)
-            elif t in ["IPv4", "IPv6"]:
-                iocs["ips"].append(v)
-            elif "FileHash" in t:
-                iocs["hashes"].append(v)
-            elif t == "CVE":
-                iocs["cves"].append(v)
-
-    return {
-        "pulse_count": len(data),
-        "tags": sorted(tags),
-        "iocs": {k: sorted(set(v)) for k, v in iocs.items()},
-    }
-
-
-@st.cache_data(ttl=3600)
 def fetch_ransomware(actor):
+    """
+    Fetch comprehensive ransomware intelligence from ransomware.live
+    """
     base = "https://api.ransomware.live"
     result = {}
 
@@ -91,35 +55,41 @@ def fetch_ransomware(actor):
         "yara": f"/yara/{actor}",
     }
 
-    for k, ep in endpoints.items():
+    for key, endpoint in endpoints.items():
         try:
-            r = requests.get(base + ep, timeout=15)
+            r = requests.get(base + endpoint, timeout=15)
             if r.status_code == 200:
-                result[k] = r.json()
+                result[key] = r.json()
             else:
-                result[k] = []
+                result[key] = []
         except Exception:
-            result[k] = []
+            result[key] = []
 
     return result
 
 
 # -------------------------------------------------------------------
-# Risk score (ADDED)
+# Risk scoring (recalibrated – no OTX)
 # -------------------------------------------------------------------
-def calculate_risk_score(incidents, otx, ransomware):
+def calculate_risk_score(incidents, ransomware):
     score = 0
 
+    # Incident volume
     score += min(len(incidents) * 2, 30)
-    score += min(incidents["country"].nunique() * 3, 15)
-    score += min(incidents["sector"].nunique() * 2, 10)
 
-    if otx:
-        score += min(otx.get("pulse_count", 0), 20)
-        score += min(len(otx.get("tags", [])), 10)
+    # Geographic spread
+    score += min(incidents["country"].nunique() * 4, 20)
 
+    # Sectoral impact
+    score += min(incidents["sector"].nunique() * 3, 15)
+
+    # Severity weighting
+    if "severity" in incidents.columns:
+        score += min(len(incidents[incidents["severity"] == "High"]) * 2, 15)
+
+    # Ransomware activity indicators
     if ransomware:
-        score += min(len(ransomware.get("negotiations", [])) * 2, 15)
+        score += min(len(ransomware.get("negotiations", [])) * 3, 15)
         score += min(len(ransomware.get("iocs", [])), 10)
 
     return min(score, 100)
@@ -141,11 +111,9 @@ if not actor:
 # -------------------------------------------------------------------
 df = load_incidents()
 actor_df = df[df["actor"] == actor]
-
-otx = fetch_otx(actor)
 ransomware = fetch_ransomware(actor)
 
-risk_score = calculate_risk_score(actor_df, otx, ransomware)
+risk_score = calculate_risk_score(actor_df, ransomware)
 
 # -------------------------------------------------------------------
 # Header
@@ -155,7 +123,7 @@ st.markdown(
     <div style="background:linear-gradient(135deg,#C41E3A,#9A1529);
                 padding:2.5rem;border-radius:14px;color:white;margin-bottom:2rem">
         <h1 style="margin-bottom:0.3rem">{actor}</h1>
-        <p style="opacity:.9">Comprehensive Threat Actor Intelligence</p>
+        <p style="opacity:.9">Threat Actor Intelligence Profile</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -165,32 +133,59 @@ st.markdown(
 # Overview
 # -------------------------------------------------------------------
 st.subheader("Overview")
-st.write(
-    f"""
-{actor} has been observed in **{len(actor_df)} incidents** across
-**{actor_df['country'].nunique()} countries** and
-**{actor_df['sector'].nunique()} industries**.
 
-This profile fuses internal CyHawk telemetry with
-AlienVault OTX community intelligence and ransomware.live disclosures.
+if not actor_df.empty:
+    st.write(
+        f"""
+**{actor}** has been linked to **{len(actor_df)} recorded incidents**
+affecting **{actor_df['country'].nunique()} countries**
+and **{actor_df['sector'].nunique()} industry sectors**.
+
+This assessment is derived from CyHawk Africa’s incident telemetry and
+corroborated using ransomware infrastructure intelligence.
 """
-)
+    )
+else:
+    st.write(
+        f"""
+**{actor}** is currently tracked through external ransomware intelligence
+sources, with limited confirmed incident telemetry within CyHawk datasets.
+"""
+    )
 
 # -------------------------------------------------------------------
-# Risk score (ADDED – section only)
+# Risk score
 # -------------------------------------------------------------------
 st.subheader("Risk Score")
 st.metric("Threat Actor Risk Index", f"{risk_score}/100")
 
 # -------------------------------------------------------------------
-# MITRE ATT&CK TTPs
+# ATT&CK-style behavioral inference
 # -------------------------------------------------------------------
-if otx.get("tags"):
-    st.subheader("MITRE ATT&CK – Observed TTPs")
-    st.write(", ".join(otx["tags"][:25]))
+st.subheader("Observed Tactics & Techniques (Inferred)")
+
+ttp_inference = []
+
+if not actor_df.empty:
+    if "ransomware" in actor.lower():
+        ttp_inference.append("Data Encryption for Impact (T1486)")
+        ttp_inference.append("Exfiltration Over Web Services (T1567)")
+    if actor_df["sector"].nunique() > 3:
+        ttp_inference.append("Targeted Vertical Operations")
+    if actor_df["country"].nunique() > 5:
+        ttp_inference.append("Cross-Border Targeting")
+
+if ransomware and ransomware.get("negotiations"):
+    ttp_inference.append("Double Extortion Operations")
+    ttp_inference.append("Victim Negotiation Pressure")
+
+if ttp_inference:
+    st.write(", ".join(sorted(set(ttp_inference))))
+else:
+    st.info("Insufficient data to reliably infer ATT&CK techniques.")
 
 # -------------------------------------------------------------------
-# Targeted Countries
+# Targeted countries
 # -------------------------------------------------------------------
 if not actor_df.empty:
     st.subheader("Targeted Countries")
@@ -200,7 +195,7 @@ if not actor_df.empty:
     st.plotly_chart(fig, use_container_width=True)
 
 # -------------------------------------------------------------------
-# Targeted Industries
+# Targeted industries
 # -------------------------------------------------------------------
 if not actor_df.empty:
     st.subheader("Targeted Industries")
@@ -210,21 +205,10 @@ if not actor_df.empty:
     st.plotly_chart(fig, use_container_width=True)
 
 # -------------------------------------------------------------------
-# IOCs (Normalized – ADDED)
-# -------------------------------------------------------------------
-if otx.get("iocs"):
-    st.subheader("Indicators of Compromise (OTX)")
-    for k, vals in otx["iocs"].items():
-        if vals:
-            st.markdown(f"**{k.upper()} ({len(vals)})**")
-            for v in vals[:25]:
-                st.code(v)
-
-# -------------------------------------------------------------------
-# Ransomware Intelligence (Normalized – ADDED)
+# Ransomware intelligence (normalized)
 # -------------------------------------------------------------------
 if ransomware:
-    st.subheader("Ransomware Intelligence Summary")
+    st.subheader("Ransomware Intelligence")
 
     if ransomware.get("groups"):
         st.markdown("**Group Metadata**")
@@ -232,7 +216,12 @@ if ransomware:
 
     if ransomware.get("negotiations"):
         st.markdown("**Negotiation Activity**")
-        st.write(f"{len(ransomware['negotiations'])} negotiation threads observed")
+        st.write(f"{len(ransomware['negotiations'])} negotiation threads identified")
+
+    if ransomware.get("iocs"):
+        st.markdown("**Infrastructure Indicators**")
+        for ioc in ransomware["iocs"][:25]:
+            st.code(ioc)
 
     if ransomware.get("ransomnotes"):
         st.markdown("**Ransom Notes**")
@@ -240,7 +229,7 @@ if ransomware:
             st.code(note)
 
     if ransomware.get("yara"):
-        st.markdown("**YARA Rules**")
+        st.markdown("**YARA Detection Rules**")
         for rule in ransomware["yara"][:5]:
             st.code(rule)
 
@@ -256,22 +245,22 @@ if not actor_df.empty:
     st.plotly_chart(fig, use_container_width=True)
 
 # -------------------------------------------------------------------
-# Analyst Note (ADDED – intelligence fusion)
+# Analyst assessment
 # -------------------------------------------------------------------
 st.subheader("Analyst Assessment")
+
 st.write(
     f"""
-**Confidence Level:** High  
+**Overall Risk Classification:** {'Critical' if risk_score >= 70 else 'High' if risk_score >= 40 else 'Moderate'}
 
-{actor} demonstrates a **risk score of {risk_score}/100**, driven by
-cross-sector targeting, geographic spread, and corroboration from
-multiple intelligence sources.
+{actor} demonstrates a **risk score of {risk_score}/100**, driven primarily by
+incident frequency, sectoral spread, and confirmed ransomware operations.
 
-The overlap between CyHawk incident telemetry and ransomware.live
-disclosures increases attribution confidence. Defensive teams should
-prioritize IOC ingestion, proactive threat hunting, and ATT&CK-aligned
-detections for this actor.
+The presence of negotiation artifacts and ransom infrastructure indicates
+financial motivation and sustained operational capability.
+Defensive teams should prioritize detection of encryption behaviors,
+data exfiltration patterns, and ransom negotiation activity.
 """
 )
 
-st.success("Threat actor report generated successfully")
+st.success("Threat actor profile generated successfully")
