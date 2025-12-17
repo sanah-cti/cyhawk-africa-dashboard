@@ -3,53 +3,70 @@ import pandas as pd
 from datetime import datetime
 import os
 
-# ---------------------------------------------------------
+# -------------------------------------------------------------------
 # PAGE CONFIG
-# ---------------------------------------------------------
+# -------------------------------------------------------------------
 st.set_page_config(
     page_title="Threat Actor Intelligence | CyHawk Africa",
     page_icon="assets/favicon.ico",
     layout="wide"
 )
 
-# ---------------------------------------------------------
-# THEME
-# ---------------------------------------------------------
-if "theme" not in st.session_state:
-    st.session_state.theme = "dark"
-
+# -------------------------------------------------------------------
+# BRANDING
+# -------------------------------------------------------------------
 CYHAWK_RED = "#C41E3A"
+CYHAWK_DARK = "#0D1117"
+CARD_BG = "#161B22"
+BORDER = "#30363D"
+TEXT_MUTED = "#8B949E"
 
-def theme():
-    return {
-        "bg": "#0D1117",
-        "card": "#161B22",
-        "border": "#30363D",
-        "text": "#E6EDF3",
-        "muted": "#8B949E",
-        "critical": "#DA3633"
+# -------------------------------------------------------------------
+# HEADER (HERO)
+# -------------------------------------------------------------------
+st.markdown(
+    """
+    <style>
+    .hero {
+        background: linear-gradient(135deg, #C41E3A 0%, #9A1529 100%);
+        padding: 3.5rem 2rem;
+        border-radius: 14px;
+        text-align: center;
+        margin-bottom: 2.5rem;
     }
+    .hero h1 {
+        color: #ffffff;
+        font-size: 2.6rem;
+        font-weight: 800;
+        margin-bottom: 0.6rem;
+    }
+    .hero p {
+        color: rgba(255,255,255,0.9);
+        font-size: 1.05rem;
+        max-width: 720px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-T = theme()
+st.markdown(
+    """
+    <div class="hero">
+        <h1>Threat Actor Intelligence</h1>
+        <p>
+            Comprehensive profiles of active threat actors targeting African organizations
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-# ---------------------------------------------------------
-# HEADER
-# ---------------------------------------------------------
-h1, h2 = st.columns([1, 6])
-with h1:
-    st.image("assets/cyhawk_logo.png", width=90)
-
-with h2:
-    st.markdown("## Threat Actor Intelligence")
-    st.caption(
-        "Comprehensive profiles of active threat actors targeting African organizations"
-    )
-
-st.divider()
-
-# ---------------------------------------------------------
-# LOAD DATA
-# ---------------------------------------------------------
+# -------------------------------------------------------------------
+# LOAD DATA (SAFE FALLBACK)
+# -------------------------------------------------------------------
 @st.cache_data
 def load_data():
     if os.path.exists("data/incidents.csv"):
@@ -61,135 +78,125 @@ def load_data():
 
 df = load_data()
 
-# ---------------------------------------------------------
-# AGGREGATE ACTOR STATS
-# ---------------------------------------------------------
-actor_stats = (
-    df.groupby("actor")
-    .agg(
-        total_attacks=("date", "count"),
+# -------------------------------------------------------------------
+# ACTOR METRICS
+# -------------------------------------------------------------------
+if not df.empty:
+    stats = df.groupby("actor").agg(
+        attacks=("date", "count"),
         countries=("country", "nunique"),
-        sectors=("sector", "nunique"),
-        high_severity=("severity", lambda x: (x == "High").sum())
-    )
-    .reset_index()
-)
+        sectors=("sector", "nunique")
+    ).reset_index()
+else:
+    stats = pd.DataFrame(columns=["actor", "attacks", "countries", "sectors"])
 
-# ---------------------------------------------------------
-# THREAT LEVEL LOGIC
-# ---------------------------------------------------------
-def threat_level(row):
-    if row["total_attacks"] > 50 or row["high_severity"] > 10:
-        return "Critical"
-    return "High"
-
-actor_stats["threat_level"] = actor_stats.apply(threat_level, axis=1)
-
-# ---------------------------------------------------------
-# STATIC PROFILE METADATA (EXTENDABLE)
-# ---------------------------------------------------------
-profiles = {
-    "Keymous Plus": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "OurSec": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "Funksec": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "dark hell 07x": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "FireWire": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "Devman": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "SKYZZXPLOIT": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "hider_nex": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "Nightspire": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "OurSec2": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "FireWireX": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
-    "DarkOps": {"origin": "Unknown", "type": "Unclassified", "active": "Unknown"},
+# -------------------------------------------------------------------
+# ACTOR PROFILES (STATIC ENRICHMENT)
+# -------------------------------------------------------------------
+ACTOR_META = {
+    "Keymous Plus": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "OurSec": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "Funksec": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "dark hell 07x": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "FireWire": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "Devman": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "SKYZZXPLOIT": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "hider_nex": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "Nightspire": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "KillSec": {"origin": "Unknown", "type": "Hacktivist", "active": "Since Unknown"},
+    "GhostSec": {"origin": "Unknown", "type": "Hacktivist", "active": "Since Unknown"},
+    "Anonymous Sudan": {"origin": "Sudan (Disputed)", "type": "Hacktivist", "active": "2023"}
 }
 
-# ---------------------------------------------------------
+stats = stats.merge(
+    pd.DataFrame.from_dict(ACTOR_META, orient="index").reset_index().rename(columns={"index": "actor"}),
+    on="actor",
+    how="left"
+)
+
+stats.fillna(
+    {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    inplace=True
+)
+
+# -------------------------------------------------------------------
 # FILTER BAR
-# ---------------------------------------------------------
-f1, f2, f3, f4 = st.columns([4, 2, 2, 2])
+# -------------------------------------------------------------------
+f1, f2, f3, f4 = st.columns([2.5, 1.2, 1.2, 1.4])
 
 with f1:
-    search = st.text_input("Search Threat Actors", placeholder="Search by name...")
+    search = st.text_input("Search Threat Actors", placeholder="Search by name, origin, or type...")
 
 with f2:
-    level_filter = st.selectbox("Threat Level", ["All", "Critical", "High"])
+    threat_level = st.selectbox("Threat Level", ["All", "Critical", "High"])
 
 with f3:
     sort_by = st.selectbox("Sort By", ["Total Attacks", "Alphabetical"])
 
 with f4:
-    st.markdown("<br>", unsafe_allow_html=True)
-    view_all = st.button("View All Actors", use_container_width=True, type="primary")
+    view_all = st.button("View All Actors", use_container_width=True)
 
-# ---------------------------------------------------------
-# APPLY FILTERS
-# ---------------------------------------------------------
-filtered = actor_stats.copy()
+# -------------------------------------------------------------------
+# FILTER LOGIC
+# -------------------------------------------------------------------
+filtered = stats.copy()
 
 if search:
-    filtered = filtered[filtered["actor"].str.contains(search, case=False)]
-
-if level_filter != "All":
-    filtered = filtered[filtered["threat_level"] == level_filter]
+    filtered = filtered[
+        filtered["actor"].str.contains(search, case=False, na=False)
+        | filtered["origin"].str.contains(search, case=False, na=False)
+        | filtered["type"].str.contains(search, case=False, na=False)
+    ]
 
 if sort_by == "Total Attacks":
-    filtered = filtered.sort_values("total_attacks", ascending=False)
+    filtered = filtered.sort_values("attacks", ascending=False)
 else:
     filtered = filtered.sort_values("actor")
 
 if not view_all:
     filtered = filtered.head(12)
 
-# ---------------------------------------------------------
-# ACTOR CARD RENDERER
-# ---------------------------------------------------------
-def actor_card(actor):
-    meta = profiles.get(actor["actor"], {})
-    with st.container(border=True):
-        st.markdown(
-            f"### {actor['actor']} "
-            f"<span style='background:{T['critical']}; color:white; "
-            f"padding:4px 8px; border-radius:6px; font-size:12px;'>"
-            f"{actor['threat_level']}</span>",
-            unsafe_allow_html=True
-        )
-
-        st.caption("Unknown")
-
+# -------------------------------------------------------------------
+# CARD GRID
+# -------------------------------------------------------------------
+cols = st.columns(4)
+for i, row in filtered.iterrows():
+    with cols[i % 4]:
         st.markdown(
             f"""
-            **Origin:** {meta.get("origin", "Unknown")}  
-            **Type:** {meta.get("type", "Unclassified")}  
-            **Active:** Since {meta.get("active", "Unknown")}
-            """
+            <div style="
+                background:{CARD_BG};
+                border:1px solid {BORDER};
+                border-radius:12px;
+                padding:1.2rem;
+                height:100%;
+            ">
+                <h3 style="margin-bottom:0.3rem;">{row.actor}</h3>
+                <p style="color:{TEXT_MUTED}; font-size:0.85rem;">
+                    Origin: {row.origin}<br>
+                    Type: {row.type}<br>
+                    Active: {row.active}
+                </p>
+                <div style="display:flex; justify-content:space-between; margin-top:1rem;">
+                    <div><strong>{int(row.attacks)}</strong><br><span style="font-size:0.75rem;">Attacks</span></div>
+                    <div><strong>{int(row.countries)}</strong><br><span style="font-size:0.75rem;">Countries</span></div>
+                    <div><strong>{int(row.sectors)}</strong><br><span style="font-size:0.75rem;">Sectors</span></div>
+                </div>
+                <a href="/Actor_Profile?actor={row.actor}" target="_blank"
+                   style="
+                       display:block;
+                       margin-top:1rem;
+                       padding:0.6rem;
+                       text-align:center;
+                       background:{CYHAWK_RED};
+                       color:white;
+                       border-radius:6px;
+                       text-decoration:none;
+                       font-weight:600;
+                   ">
+                   View Profile
+                </a>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Attacks", int(actor["total_attacks"]))
-        c2.metric("Countries", int(actor["countries"]))
-        c3.metric("Sectors", int(actor["sectors"]))
-
-        profile_url = f"/Actor_Profile?actor={actor['actor']}"
-        st.link_button(
-            "View Profile",
-            profile_url,
-            use_container_width=True
-        )
-
-# ---------------------------------------------------------
-# GRID DISPLAY (4 x 3)
-# ---------------------------------------------------------
-for i in range(0, len(filtered), 4):
-    cols = st.columns(4)
-    for col, (_, row) in zip(cols, filtered.iloc[i:i+4].iterrows()):
-        with col:
-            actor_card(row)
-
-# ---------------------------------------------------------
-# FOOTER STATS
-# ---------------------------------------------------------
-st.divider()
-c1, c2, c3 = st.columns(3)
-c1.metric("Total Threat Actors", actor_stats["actor"].nunique())
-c2.metric("Critical Actors", (actor_stats["threat_level"] == "Critical").sum())
-c3.metric("Total Attacks Tracked", actor_stats["total_attacks"].sum())
