@@ -117,11 +117,5 @@ def set_page_config(page_title="CyHawk Africa Dashboard", page_icon="🔒", layo
         page_title=page_title,
         page_icon=page_icon,
         layout=layout,
-        initial_sidebar_state="expanded",
-        menu_items={
-            'Report a cyber incident': 'https://cyhawk-africa.com/contact',
-            'Report a bug': 'https://cyhawk-africa.com/contact',
-            'Support Us': 'https://buymeacoffee.com/cyhawk',
-            'About': 'CyHawk Africa - Cyber Threat Intelligence Platform'
-        }
+        initial_sidebar_state="expanded"
     )
