@@ -13,59 +13,29 @@ st.set_page_config(
 )
 
 CYHAWK_RED = "#C41E3A"
-CYHAWK_RED_DARK = "#9A1529"
 
 # -------------------------------------------------
-# Styles
+# Header (native)
 # -------------------------------------------------
 st.markdown(
-    f"""
+    """
     <style>
-    .page-header {{
-        background: linear-gradient(135deg, {CYHAWK_RED}, {CYHAWK_RED_DARK});
+    .header {
+        background: linear-gradient(135deg, #C41E3A, #9A1529);
         padding: 3rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
+        border-radius: 14px;
         text-align: center;
+        margin-bottom: 2rem;
         color: white;
-    }}
-    .actor-card {{
-        background: #161B22;
-        border: 1px solid #30363D;
-        border-radius: 10px;
-        padding: 1.25rem;
-        height: 100%;
-    }}
-    .actor-badge {{
-        background: {CYHAWK_RED};
-        color: white;
-        padding: 0.25rem 0.6rem;
-        border-radius: 10px;
-        font-size: 0.65rem;
-        font-weight: 700;
-    }}
-    .view-btn {{
-        display:block;
-        margin-top:1rem;
-        padding:0.6rem;
-        text-align:center;
-        background:{CYHAWK_RED};
-        color:white;
-        border-radius:6px;
-        text-decoration:none;
-        font-weight:600;
-    }}
+    }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# -------------------------------------------------
-# Header
-# -------------------------------------------------
 st.markdown(
     """
-    <div class="page-header">
+    <div class="header">
         <h1>Threat Actor Intelligence</h1>
         <p>Comprehensive profiles of active threat actors targeting African organizations</p>
     </div>
@@ -74,7 +44,7 @@ st.markdown(
 )
 
 # -------------------------------------------------
-# Load + prepare data
+# Load data
 # -------------------------------------------------
 @st.cache_data
 def load_data():
@@ -91,20 +61,22 @@ if df.empty:
     st.warning("No threat actor data available.")
     st.stop()
 
-# Aggregate and deduplicate
+# -------------------------------------------------
+# Aggregate actors (top 12, deduped)
+# -------------------------------------------------
 actor_stats = (
     df.groupby("actor", as_index=False)
     .size()
     .rename(columns={"size": "total_attacks"})
     .sort_values("total_attacks", ascending=False)
-    .head(12)  # GUARANTEED 12
+    .head(12)
 )
 
-# -------------------------------------------------
-# Render cards in rows of 4
-# -------------------------------------------------
 actors = actor_stats.to_dict("records")
 
+# -------------------------------------------------
+# Render cards — STREAMLIT NATIVE ONLY
+# -------------------------------------------------
 for i in range(0, len(actors), 4):
     cols = st.columns(4, gap="medium")
 
@@ -114,39 +86,31 @@ for i in range(0, len(actors), 4):
         slug = urllib.parse.quote_plus(actor_name.lower().replace(" ", "-"))
 
         with col:
-            st.markdown(
-                f"""
-                <div class="actor-card">
-                    <div style="display:flex; justify-content:space-between;">
-                        <h3 style="margin:0;">{actor_name}</h3>
-                        <span class="actor-badge">ACTIVE</span>
-                    </div>
+            with st.container(border=True):
 
-                    <p style="color:#8B949E; font-size:0.85rem; margin-top:0.5rem;">
-                        Total Attacks Tracked
-                    </p>
+                # Header row
+                hcol1, hcol2 = st.columns([4, 1])
+                with hcol1:
+                    st.subheader(actor_name)
+                with hcol2:
+                    st.markdown(
+                        f"<span style='background:{CYHAWK_RED}; color:white; padding:0.25rem 0.6rem; border-radius:10px; font-size:0.7rem;'>ACTIVE</span>",
+                        unsafe_allow_html=True
+                    )
 
-                    <h2 style="margin-top:0;">{attacks}</h2>
+                # Metrics
+                st.caption("Total Attacks Tracked")
+                st.metric(label="", value=attacks)
 
-                    <a class="view-btn"
-                       href="/Actor_Profile?actor={slug}"
-                       target="_blank">
-                        View Profile →
-                    </a>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+                # CTA — native link button (new tab)
+                st.link_button(
+                    "View Profile →",
+                    url=f"/Actor_Profile?actor={slug}",
+                    use_container_width=True
+                )
 
 # -------------------------------------------------
 # Footer
 # -------------------------------------------------
-st.markdown(
-    """
-    <hr>
-    <p style="color:#8B949E; font-size:0.8rem;">
-        © CyHawk Africa — Threat Intelligence Platform
-    </p>
-    """,
-    unsafe_allow_html=True
-)
+st.divider()
+st.caption("© CyHawk Africa — Threat Intelligence Platform")
