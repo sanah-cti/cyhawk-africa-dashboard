@@ -65,7 +65,7 @@ def theme_config():
 
 C = theme_config()
 
-# CSS
+# Simplified CSS for containers
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -94,134 +94,13 @@ st.markdown(f"""
     margin-top: 0.5rem;
 }}
 
-/* Square card styling */
-.actor-card-container {{
-    background: {C['card']};
-    border: 2px solid {C['border']};
-    border-radius: 12px;
-    padding: 1.5rem;
-    transition: all 0.3s ease;
-    cursor: pointer;
+/* Container styling for square cards */
+.stContainer {{
     position: relative;
-    overflow: hidden;
-    aspect-ratio: 1;
-    display: flex;
-    flex-direction: column;
 }}
 
-.actor-card-container:hover {{
-    transform: translateY(-6px);
-    box-shadow: 0 12px 32px rgba(196, 30, 58, 0.3);
-    border-color: {C['accent']};
-}}
-
-.actor-card-container::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, {C['accent']} 0%, {CYHAWK_RED_DARK} 100%);
-}}
-
-.threat-badge {{
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.3rem 0.8rem;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}}
-
-.threat-critical {{ 
-    background: {C['danger']}; 
-    color: white;
-    box-shadow: 0 2px 8px rgba(218, 54, 51, 0.3);
-}}
-
-.threat-high {{ 
-    background: #ff6b6b; 
-    color: white;
-    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-}}
-
-.actor-name-text {{
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: {C['text']};
-    margin: 0 0 0.5rem 0;
-    padding-right: 5rem;
-    line-height: 1.3;
-}}
-
-.actor-alias {{
-    font-size: 0.8rem;
-    color: {C['text_secondary']};
-    font-style: italic;
-    margin-bottom: 1rem;
-}}
-
-.actor-info {{
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    margin-bottom: 1rem;
-    flex-grow: 1;
-}}
-
-.info-row {{
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    color: {C['text_secondary']};
-}}
-
-.info-label {{
-    font-weight: 600;
-    min-width: 70px;
-    color: {C['text_muted']};
-}}
-
-.actor-stats-grid {{
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    margin-top: auto;
-    padding-top: 1rem;
-    border-top: 1px solid {C['border']};
-}}
-
-.stat-box {{
-    text-align: center;
-}}
-
-.stat-value {{
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: {C['accent']};
-    line-height: 1;
-}}
-
-.stat-label {{
-    font-size: 0.65rem;
-    color: {C['text_muted']};
-    text-transform: uppercase;
-    margin-top: 0.25rem;
-    letter-spacing: 0.5px;
-}}
-
-@media (max-width: 768px) {{
-    .page-title {{
-        font-size: 2rem;
-    }}
-    .actor-name-text {{
-        font-size: 1.1rem;
-    }}
+[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] {{
+    gap: 1rem;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -249,18 +128,10 @@ def load_data():
 
 df = load_data()
 
-# Function to determine threat level based on actor activity
+# Function to determine threat level
 def determine_threat_level(actor_name, total_attacks, high_severity, countries, sectors, actor_type):
-    """
-    Determine threat level based on multiple factors:
-    - Ransomware groups: Critical
-    - Top attackers (>50 attacks): Critical
-    - High severity attacks (>10): Critical
-    - Wide geographic spread (>3 countries): Critical
-    - Multiple sectors (>5): Critical
-    - Otherwise: High
-    """
-    # Check if ransomware group
+    """Determine threat level based on multiple factors"""
+    # Ransomware groups
     ransomware_keywords = ['ransomware', 'revil', 'lockbit', 'darkside', 'conti', 'maze', 'ryuk']
     if any(keyword in actor_name.lower() for keyword in ransomware_keywords):
         return 'Critical'
@@ -268,24 +139,24 @@ def determine_threat_level(actor_name, total_attacks, high_severity, countries, 
     if any(keyword in actor_type.lower() for keyword in ransomware_keywords):
         return 'Critical'
     
-    # Check attack volume
+    # High attack volume
     if total_attacks > 50:
         return 'Critical'
     
-    # Check high severity attacks
+    # High severity attacks
     if high_severity > 10:
         return 'Critical'
     
-    # Check geographic spread
+    # Wide geographic spread
     if countries > 3:
         return 'Critical'
     
-    # Check sector diversity
+    # Multiple sectors
     if sectors > 5:
         return 'Critical'
     
-    # Check for state-sponsored APT groups
-    apt_keywords = ['apt', 'fancy bear', 'lazarus', 'equation group', 'turla']
+    # APT groups
+    apt_keywords = ['apt', 'fancy bear', 'lazarus', 'equation', 'turla']
     if any(keyword in actor_name.lower() for keyword in apt_keywords):
         return 'Critical'
     
@@ -310,43 +181,17 @@ if len(df) > 0:
     actor_stats.columns = ['actor', 'total_attacks', 'high_severity', 'countries', 'sectors']
     actor_stats = actor_stats.sort_values('total_attacks', ascending=False)
     
-    # Threat actor profiles database
+    # Threat actor profiles
     actor_profiles = {
-        'APT28': {
-            'alias': 'Fancy Bear, Sofacy',
-            'origin': 'Russia',
-            'active_since': '2007',
-            'type': 'State-Sponsored (GRU)',
-        },
-        'Lazarus Group': {
-            'alias': 'HIDDEN COBRA, Guardians of Peace',
-            'origin': 'North Korea',
-            'active_since': '2009',
-            'type': 'State-Sponsored (RGB)',
-        },
-        'Anonymous Sudan': {
-            'alias': 'AnonymousSudan',
-            'origin': 'Sudan (Disputed)',
-            'active_since': '2023',
-            'type': 'Hacktivist',
-        },
-        'DarkSide': {
-            'alias': 'DarkSide Ransomware',
-            'origin': 'Eastern Europe',
-            'active_since': '2020',
-            'type': 'Cybercrime (Ransomware)',
-        },
-        'REvil': {
-            'alias': 'Sodinokibi',
-            'origin': 'Russia',
-            'active_since': '2019',
-            'type': 'Cybercrime (Ransomware)',
-        }
+        'APT28': {'alias': 'Fancy Bear, Sofacy', 'origin': 'Russia', 'active_since': '2007', 'type': 'State-Sponsored (GRU)'},
+        'Lazarus Group': {'alias': 'HIDDEN COBRA', 'origin': 'North Korea', 'active_since': '2009', 'type': 'State-Sponsored (RGB)'},
+        'Anonymous Sudan': {'alias': 'AnonymousSudan', 'origin': 'Sudan (Disputed)', 'active_since': '2023', 'type': 'Hacktivist'},
+        'DarkSide': {'alias': 'DarkSide Ransomware', 'origin': 'Eastern Europe', 'active_since': '2020', 'type': 'Cybercrime (Ransomware)'},
+        'REvil': {'alias': 'Sodinokibi', 'origin': 'Russia', 'active_since': '2019', 'type': 'Cybercrime (Ransomware)'},
     }
     
-    # Calculate threat levels dynamically
-    for idx, row in actor_stats.iterrows():
-        actor_name = row['actor']
+    # Add default profiles for unknown actors
+    for actor_name in actor_stats['actor'].unique():
         if actor_name not in actor_profiles:
             actor_profiles[actor_name] = {
                 'alias': 'Unknown',
@@ -355,39 +200,46 @@ if len(df) > 0:
                 'type': 'Unclassified',
             }
     
-    # Search and filters
+    # Calculate threat levels
+    actor_stats['threat_level'] = actor_stats.apply(
+        lambda row: determine_threat_level(
+            row['actor'], row['total_attacks'], row['high_severity'],
+            row['countries'], row['sectors'],
+            actor_profiles.get(row['actor'], {}).get('type', 'Unknown')
+        ), axis=1
+    )
+    
+    # Filters
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+    
     with col1:
         search_term = st.text_input("Search Threat Actors", placeholder="Search by name, origin, or type...")
+    
     with col2:
         threat_filter = st.selectbox("Threat Level", ["All", "Critical", "High"])
+    
     with col3:
         sort_by = st.selectbox("Sort By", ["Total Attacks", "High Severity", "Alphabetical"])
+    
     with col4:
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("View All Actors" if not st.session_state.show_all_actors else "Show Top 12", use_container_width=True):
+        st.markdown("<div style='margin-bottom: 8px;'>&nbsp;</div>", unsafe_allow_html=True)
+        view_all_btn = st.button(
+            "View All Actors" if not st.session_state.show_all_actors else "Show Top 12",
+            use_container_width=True,
+            type="primary"
+        )
+        if view_all_btn:
             st.session_state.show_all_actors = not st.session_state.show_all_actors
             st.rerun()
     
     # Apply filters
     filtered_stats = actor_stats.copy()
+    
     if search_term:
-        filtered_stats = filtered_stats[filtered_stats['actor'].str.contains(search_term, case=False, na=False)]
+        filtered_stats = filtered_stats[
+            filtered_stats['actor'].str.contains(search_term, case=False, na=False)
+        ]
     
-    # Calculate threat levels for filtering
-    filtered_stats['threat_level'] = filtered_stats.apply(
-        lambda row: determine_threat_level(
-            row['actor'],
-            row['total_attacks'],
-            row['high_severity'],
-            row['countries'],
-            row['sectors'],
-            actor_profiles.get(row['actor'], {}).get('type', 'Unknown')
-        ),
-        axis=1
-    )
-    
-    # Filter by threat level
     if threat_filter != "All":
         filtered_stats = filtered_stats[filtered_stats['threat_level'] == threat_filter]
     
@@ -401,87 +253,82 @@ if len(df) > 0:
     
     # Determine how many to show
     num_to_show = len(filtered_stats) if st.session_state.show_all_actors else min(12, len(filtered_stats))
-    
-    # Display actor cards in grid
     actors_to_display = filtered_stats.head(num_to_show)
     
-    # Create 4 columns per row for square grid
+    # Display in 4-column grid
     num_cols = 4
     num_actors = len(actors_to_display)
     
     for i in range(0, num_actors, num_cols):
-        cols = st.columns(num_cols)
+        cols = st.columns(num_cols, gap="medium")
         
         for j in range(num_cols):
             if i + j < num_actors:
                 row = actors_to_display.iloc[i + j]
                 actor_name = row['actor']
-                profile = actor_profiles.get(actor_name, {
-                    'alias': 'Unknown',
-                    'origin': 'Unknown',
-                    'type': 'Unclassified',
-                    'active_since': 'Unknown'
-                })
-                
+                profile = actor_profiles.get(actor_name, {})
                 threat_level = row['threat_level']
-                threat_level_class = 'threat-critical' if threat_level == 'Critical' else 'threat-high'
                 
                 with cols[j]:
-                    # Create card HTML
-                    st.markdown(f"""
-                    <div class="actor-card-container">
-                        <span class="threat-badge {threat_level_class}">{threat_level}</span>
+                    # Container for square card
+                    with st.container(border=True):
+                        # Threat level badge
+                        badge_color = C['danger'] if threat_level == 'Critical' else '#ff6b6b'
+                        st.markdown(f"""
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: {C['text']}; flex: 1; padding-right: 1rem;">
+                                    {actor_name}
+                                </h3>
+                                <span style="background: {badge_color}; color: white; padding: 0.25rem 0.6rem; 
+                                      border-radius: 12px; font-size: 0.65rem; font-weight: 700; 
+                                      text-transform: uppercase; white-space: nowrap;">
+                                    {threat_level}
+                                </span>
+                            </div>
+                        """, unsafe_allow_html=True)
                         
-                        <h3 class="actor-name-text">{actor_name}</h3>
-                        <div class="actor-alias">{profile['alias']}</div>
+                        # Alias
+                        st.markdown(f"""
+                            <p style="font-size: 0.8rem; color: {C['text_secondary']}; 
+                                 font-style: italic; margin: 0 0 1rem 0;">
+                                {profile.get('alias', 'Unknown')}
+                            </p>
+                        """, unsafe_allow_html=True)
                         
-                        <div class="actor-info">
-                            <div class="info-row">
-                                <span class="info-label">Origin:</span>
-                                <span>{profile['origin']}</span>
+                        # Info
+                        st.markdown(f"""
+                            <div style="font-size: 0.85rem; color: {C['text_secondary']}; 
+                                 margin-bottom: 1rem; line-height: 1.6;">
+                                <div><strong style="color: {C['text_muted']};">Origin:</strong> {profile.get('origin', 'Unknown')}</div>
+                                <div><strong style="color: {C['text_muted']};">Type:</strong> {profile.get('type', 'Unknown')}</div>
+                                <div><strong style="color: {C['text_muted']};">Active:</strong> Since {profile.get('active_since', 'Unknown')}</div>
                             </div>
-                            <div class="info-row">
-                                <span class="info-label">Type:</span>
-                                <span>{profile['type']}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Active:</span>
-                                <span>Since {profile['active_since']}</span>
-                            </div>
-                        </div>
+                        """, unsafe_allow_html=True)
                         
-                        <div class="actor-stats-grid">
-                            <div class="stat-box">
-                                <div class="stat-value">{int(row['total_attacks'])}</div>
-                                <div class="stat-label">Attacks</div>
-                            </div>
-                            <div class="stat-box">
-                                <div class="stat-value">{int(row['countries'])}</div>
-                                <div class="stat-label">Countries</div>
-                            </div>
-                            <div class="stat-box">
-                                <div class="stat-value">{int(row['sectors'])}</div>
-                                <div class="stat-label">Sectors</div>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # View Profile button
-                    if st.button("View Profile", key=f"btn_{actor_name}", use_container_width=True):
-                        st.session_state.selected_actor = actor_name
-                        st.query_params["actor"] = actor_name
-                        st.switch_page("pages/2_📋_Actor_Profile.py")
+                        # Stats
+                        stat_col1, stat_col2, stat_col3 = st.columns(3)
+                        with stat_col1:
+                            st.metric("Attacks", int(row['total_attacks']), label_visibility="visible")
+                        with stat_col2:
+                            st.metric("Countries", int(row['countries']), label_visibility="visible")
+                        with stat_col3:
+                            st.metric("Sectors", int(row['sectors']), label_visibility="visible")
+                        
+                        # View Profile button
+                        if st.button("View Profile", key=f"view_{actor_name}", use_container_width=True):
+                            st.session_state.selected_actor = actor_name
+                            st.query_params["actor"] = actor_name
+                            st.switch_page("pages/2_📋_Actor_Profile.py")
     
-    # Show count of displayed actors
+    # Show status
     st.markdown("---")
     if st.session_state.show_all_actors:
-        st.info(f"Showing all {num_actors} threat actors")
+        st.success(f"✅ Showing all {num_actors} threat actors")
     else:
-        st.info(f"Showing top {num_to_show} of {len(filtered_stats)} threat actors. Click 'View All Actors' to see more.")
+        st.info(f"ℹ️ Showing top {num_to_show} of {len(filtered_stats)} threat actors")
     
 else:
-    st.info("No threat actor data available. Please load incidents data.")
+    st.warning("⚠️ No threat actor data available. Please load incidents data.")
 
 # Summary statistics
 if len(df) > 0:
@@ -489,20 +336,16 @@ if len(df) > 0:
     st.subheader("Threat Actor Summary")
     
     col1, col2, col3, col4 = st.columns(4)
+    
     with col1:
         st.metric("Total Threat Actors", len(actor_stats))
+    
     with col2:
-        critical_count = sum(1 for _, row in actor_stats.iterrows() 
-                            if determine_threat_level(
-                                row['actor'], 
-                                row['total_attacks'], 
-                                row['high_severity'], 
-                                row['countries'], 
-                                row['sectors'],
-                                actor_profiles.get(row['actor'], {}).get('type', 'Unknown')
-                            ) == 'Critical')
+        critical_count = len(actor_stats[actor_stats['threat_level'] == 'Critical'])
         st.metric("Critical Threat Actors", critical_count)
+    
     with col3:
         st.metric("Total Attacks Tracked", int(actor_stats['total_attacks'].sum()))
+    
     with col4:
         st.metric("High Severity Attacks", int(actor_stats['high_severity'].sum()))
