@@ -587,7 +587,6 @@ def main():
         </p>
         <p>
             Visit <a href="https://cyhawk-africa.com/blog" target="_blank" class="footer-cta-link">CyHawk Africa Blog</a> 
-            for comprehensive threat intelligence and security research
         </p>
     </div>
     """, unsafe_allow_html=True)
