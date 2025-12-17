@@ -28,24 +28,24 @@ selected_actor = query_params.get("actor", [""])[0] if "actor" in query_params e
 if not selected_actor:
     st.error("⚠️ No threat actor selected. Please select an actor from the Threat Actors page.")
     
-    st.markdown("""
+    st.markdown(f"""
     <div style="text-align: center; margin: 3rem 0;">
         <a href="Threat_Actors" style="
             display: inline-block;
             padding: 1rem 2rem;
-            background: {accent};
+            background: {CYHAWK_RED};
             color: white;
             border-radius: 8px;
             text-decoration: none;
             font-weight: 600;
             font-size: 1.1rem;
             transition: all 0.3s ease;
-        " onmouseover="this.style.background='{accent_dark}'" 
-           onmouseout="this.style.background='{accent}'">
+        " onmouseover="this.style.background='{CYHAWK_RED_DARK}'" 
+           onmouseout="this.style.background='{CYHAWK_RED}'">
             ← Go to Threat Actors
         </a>
     </div>
-    """.format(accent=CYHAWK_RED, accent_dark=CYHAWK_RED_DARK), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
     
     st.info("💡 **Tip:** Click on any threat actor card and then click 'View Profile' to see their detailed information.")
     st.stop()
@@ -600,19 +600,19 @@ if len(actor_df) > 0:
 
 # Back button at bottom
 st.markdown("---")
-st.markdown("""
+st.markdown(f"""
 <a href="Threat_Actors" style="
     display: inline-block;
     padding: 0.75rem 1.5rem;
     background: transparent;
-    color: {accent};
-    border: 2px solid {accent};
+    color: {C['accent']};
+    border: 2px solid {C['accent']};
     border-radius: 6px;
     text-decoration: none;
     font-weight: 600;
     transition: all 0.3s ease;
-" onmouseover="this.style.background='{accent}'; this.style.color='white'" 
-   onmouseout="this.style.background='transparent'; this.style.color='{accent}'">
+" onmouseover="this.style.background='{C['accent']}'; this.style.color='white'" 
+   onmouseout="this.style.background='transparent'; this.style.color='{C['accent']}'">
     ← Back to Threat Actors
 </a>
-""".format(accent=C['accent']), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
