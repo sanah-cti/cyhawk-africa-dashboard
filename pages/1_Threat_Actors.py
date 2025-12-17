@@ -297,8 +297,9 @@ for i in range(0, num_actors, num_cols):
                         st.metric("Sectors", int(row['sectors']))
                     
                     # View Profile button
+                    actor_url_safe = row['actor'].replace(' ', '%20')
                     st.markdown(f"""
-                        <a href="Actor_Profile?actor={row['actor']}" target="_blank" style="
+                        <a href="/Actor_Profile?actor={actor_url_safe}" target="_blank" style="
                             display: block;
                             width: 100%;
                             padding: 0.5rem;
