@@ -324,11 +324,22 @@ if otx and otx["iocs"]:
 # -----------------------------------------------------------------------------
 if ransomware:
     st.markdown("## 🎯 Ransomware Victims")
-    for v in ransomware[:20]:
-        st.markdown(
-            f"**{v.get('post_title')}**  \n"
-            f"Country: {v.get('country')} | Discovered: {v.get('discovered')}"
-        )
+   if ransomware:
+    if ransomware.get("negotiations"):
+        for n in ransomware["negotiations"][:20]:
+            ...
+
+    if ransomware.get("iocs"):
+        for ioc in ransomware["iocs"][:50]:
+            ...
+
+    if ransomware.get("ransomnotes"):
+        for note in ransomware["ransomnotes"][:10]:
+            ...
+
+    if ransomware.get("yara"):
+        for rule in ransomware["yara"][:10]:
+            ...
 
 # -----------------------------------------------------------------------------
 # TIMELINE
