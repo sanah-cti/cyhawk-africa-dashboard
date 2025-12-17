@@ -318,7 +318,14 @@ if len(df) > 0:
                         if st.button("View Profile", key=f"view_{actor_name}", use_container_width=True):
                             st.session_state.selected_actor = actor_name
                             st.query_params["actor"] = actor_name
-                            st.switch_page("pages/2_📋_Actor_Profile.py")
+                            # Try different possible page names
+                            try:
+                                st.switch_page("pages/2_📋_Actor_Profile.py")
+                            except:
+                                try:
+                                    st.switch_page("pages/Actor_Profile.py")
+                                except:
+                                    st.error("Actor Profile page not found. Please check the page filename.")
     
     # Show status
     st.markdown("---")
