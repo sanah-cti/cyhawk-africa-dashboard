@@ -28,12 +28,26 @@ selected_actor = query_params.get("actor", [""])[0] if "actor" in query_params e
 if not selected_actor:
     st.error("⚠️ No threat actor selected. Please select an actor from the Threat Actors page.")
     
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if st.button("← Back to Threat Actors", use_container_width=True, type="primary"):
-            st.switch_page("pages/1_🎯_Threat_Actors.py")
+    st.markdown("""
+    <div style="text-align: center; margin: 3rem 0;">
+        <a href="Threat_Actors" style="
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: {accent};
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        " onmouseover="this.style.background='{accent_dark}'" 
+           onmouseout="this.style.background='{accent}'">
+            ← Go to Threat Actors
+        </a>
+    </div>
+    """.format(accent=CYHAWK_RED, accent_dark=CYHAWK_RED_DARK), unsafe_allow_html=True)
     
-    st.info("💡 **Tip:** Click on a threat actor card from the Threat Actors page to view their detailed profile.")
+    st.info("💡 **Tip:** Click on any threat actor card and then click 'View Profile' to see their detailed information.")
     st.stop()
 
 # Theme
@@ -586,5 +600,19 @@ if len(actor_df) > 0:
 
 # Back button at bottom
 st.markdown("---")
-if st.button("← Back to Threat Actors", use_container_width=False):
-    st.switch_page("pages/1_🎯_Threat_Actors.py")
+st.markdown("""
+<a href="Threat_Actors" style="
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    color: {accent};
+    border: 2px solid {accent};
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+" onmouseover="this.style.background='{accent}'; this.style.color='white'" 
+   onmouseout="this.style.background='transparent'; this.style.color='{accent}'">
+    ← Back to Threat Actors
+</a>
+""".format(accent=C['accent']), unsafe_allow_html=True)
