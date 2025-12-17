@@ -93,15 +93,6 @@ st.markdown(f"""
     font-size: 1.1rem;
     margin-top: 0.5rem;
 }}
-
-/* Container styling for square cards */
-.stContainer {{
-    position: relative;
-}}
-
-[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] {{
-    gap: 1rem;
-}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -314,18 +305,11 @@ if len(df) > 0:
                         with stat_col3:
                             st.metric("Sectors", int(row['sectors']), label_visibility="visible")
                         
-                        # View Profile button
+                        # View Profile button - store in session state and set query param
                         if st.button("View Profile", key=f"view_{actor_name}", use_container_width=True):
                             st.session_state.selected_actor = actor_name
-                            st.query_params["actor"] = actor_name
-                            # Try different possible page names
-                            try:
-                                st.switch_page("pages/2_📋_Actor_Profile.py")
-                            except:
-                                try:
-                                    st.switch_page("pages/Actor_Profile.py")
-                                except:
-                                    st.error("Actor Profile page not found. Please check the page filename.")
+                            st.query_params.update({"actor": actor_name})
+                            st.rerun()
     
     # Show status
     st.markdown("---")
