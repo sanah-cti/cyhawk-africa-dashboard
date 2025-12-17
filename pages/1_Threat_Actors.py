@@ -3,69 +3,91 @@ import pandas as pd
 from datetime import datetime
 import os
 
-# -------------------------------------------------------------------
-# PAGE CONFIG
-# -------------------------------------------------------------------
-st.set_page_config(
-    page_title="Threat Actor Intelligence | CyHawk Africa",
-    page_icon="assets/favicon.ico",
-    layout="wide"
-)
+# Import navigation utilities
+try:
+    from navigation_utils import add_logo_and_branding, set_page_config as custom_set_page_config
+    custom_set_page_config(
+        page_title="Threat Actor Intelligence | CyHawk Africa",
+        page_icon="assets/favicon.ico",
+        layout="wide"
+    )
+    add_logo_and_branding()
+except ImportError:
+    st.set_page_config(
+        page_title="Threat Actor Intelligence | CyHawk Africa",
+        page_icon="assets/favicon.ico",
+        layout="wide"
+    )
 
 # -------------------------------------------------------------------
-# BRANDING
+# BRANDING & THEME
 # -------------------------------------------------------------------
 CYHAWK_RED = "#C41E3A"
+CYHAWK_RED_DARK = "#9A1529"
 CYHAWK_DARK = "#0D1117"
 CARD_BG = "#161B22"
 BORDER = "#30363D"
+TEXT = "#E6EDF3"
 TEXT_MUTED = "#8B949E"
 
-# -------------------------------------------------------------------
-# HEADER (HERO)
-# -------------------------------------------------------------------
-st.markdown(
-    """
-    <style>
-    .hero {
-        background: linear-gradient(135deg, #C41E3A 0%, #9A1529 100%);
-        padding: 3.5rem 2rem;
-        border-radius: 14px;
-        text-align: center;
-        margin-bottom: 2.5rem;
-    }
-    .hero h1 {
-        color: #ffffff;
-        font-size: 2.6rem;
-        font-weight: 800;
-        margin-bottom: 0.6rem;
-    }
-    .hero p {
-        color: rgba(255,255,255,0.9);
-        font-size: 1.05rem;
-        max-width: 720px;
-        margin: 0 auto;
-        line-height: 1.6;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <div class="hero">
-        <h1>Threat Actor Intelligence</h1>
-        <p>
-            Comprehensive profiles of active threat actors targeting African organizations
-        </p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+# Initialize view all state
+if 'show_all_actors' not in st.session_state:
+    st.session_state.show_all_actors = False
 
 # -------------------------------------------------------------------
-# LOAD DATA (SAFE FALLBACK)
+# CSS STYLES
+# -------------------------------------------------------------------
+st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+* {{ font-family: 'Inter', sans-serif; }}
+
+.hero {{
+    background: linear-gradient(135deg, {CYHAWK_RED} 0%, {CYHAWK_RED_DARK} 100%);
+    padding: 3.5rem 2rem;
+    border-radius: 14px;
+    text-align: center;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 8px 32px rgba(196, 30, 58, 0.3);
+}}
+.hero h1 {{
+    color: #ffffff;
+    font-size: 2.8rem;
+    font-weight: 800;
+    margin-bottom: 0.6rem;
+    letter-spacing: -0.5px;
+}}
+.hero p {{
+    color: rgba(255,255,255,0.95);
+    font-size: 1.15rem;
+    max-width: 720px;
+    margin: 0 auto;
+    line-height: 1.6;
+}}
+
+/* Square Card Containers */
+.stContainer {{
+    position: relative;
+}}
+
+[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] {{
+    gap: 1rem;
+}}
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------------------------------------------------------
+# HEADER
+# -------------------------------------------------------------------
+st.markdown("""
+<div class="hero">
+    <h1>Threat Actor Intelligence</h1>
+    <p>Comprehensive profiles of active threat actors targeting African organizations</p>
+</div>
+""", unsafe_allow_html=True)
+
+# -------------------------------------------------------------------
+# LOAD DATA
 # -------------------------------------------------------------------
 @st.cache_data
 def load_data():
@@ -77,6 +99,38 @@ def load_data():
     return pd.DataFrame()
 
 df = load_data()
+
+# -------------------------------------------------------------------
+# FUNCTION TO DETERMINE THREAT LEVEL
+# -------------------------------------------------------------------
+def determine_threat_level(actor_name, total_attacks, countries, sectors, actor_type):
+    """Determine threat level based on multiple factors"""
+    # Ransomware groups
+    ransomware_keywords = ['ransomware', 'revil', 'lockbit', 'darkside', 'conti', 'maze', 'ryuk']
+    if any(keyword in actor_name.lower() for keyword in ransomware_keywords):
+        return 'Critical'
+    
+    if any(keyword in actor_type.lower() for keyword in ransomware_keywords):
+        return 'Critical'
+    
+    # High attack volume
+    if total_attacks > 50:
+        return 'Critical'
+    
+    # Wide geographic spread
+    if countries > 3:
+        return 'Critical'
+    
+    # Multiple sectors
+    if sectors > 5:
+        return 'Critical'
+    
+    # APT groups
+    apt_keywords = ['apt', 'fancy bear', 'lazarus', 'equation', 'turla']
+    if any(keyword in actor_name.lower() for keyword in apt_keywords):
+        return 'Critical'
+    
+    return 'High'
 
 # -------------------------------------------------------------------
 # ACTOR METRICS
@@ -91,32 +145,50 @@ else:
     stats = pd.DataFrame(columns=["actor", "attacks", "countries", "sectors"])
 
 # -------------------------------------------------------------------
-# ACTOR PROFILES (STATIC ENRICHMENT)
+# ACTOR PROFILES (EXPANDED)
 # -------------------------------------------------------------------
 ACTOR_META = {
-    "Keymous Plus": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
-    "OurSec": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
-    "Funksec": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
-    "dark hell 07x": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
-    "FireWire": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
-    "Devman": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
-    "SKYZZXPLOIT": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
-    "hider_nex": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
-    "Nightspire": {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
-    "KillSec": {"origin": "Unknown", "type": "Hacktivist", "active": "Since Unknown"},
-    "GhostSec": {"origin": "Unknown", "type": "Hacktivist", "active": "Since Unknown"},
-    "Anonymous Sudan": {"origin": "Sudan (Disputed)", "type": "Hacktivist", "active": "2023"}
+    "Keymous Plus": {"alias": "Unknown", "origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "OurSec": {"alias": "Unknown", "origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "Funksec": {"alias": "Unknown", "origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "dark hell 07x": {"alias": "Unknown", "origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "FireWire": {"alias": "Unknown", "origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "Devman": {"alias": "Unknown", "origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "SKYZZXPLOIT": {"alias": "Unknown", "origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "hider_nex": {"alias": "Unknown", "origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "Nightspire": {"alias": "Unknown", "origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
+    "KillSec": {"alias": "Unknown", "origin": "Unknown", "type": "Hacktivist", "active": "Since Unknown"},
+    "GhostSec": {"alias": "Unknown", "origin": "Unknown", "type": "Hacktivist", "active": "Since Unknown"},
+    "Anonymous Sudan": {"alias": "AnonymousSudan", "origin": "Sudan (Disputed)", "type": "Hacktivist", "active": "2023"},
+    "APT28": {"alias": "Fancy Bear, Sofacy", "origin": "Russia", "type": "State-Sponsored (GRU)", "active": "2007"},
+    "Lazarus Group": {"alias": "HIDDEN COBRA", "origin": "North Korea", "type": "State-Sponsored (RGB)", "active": "2009"},
+    "DarkSide": {"alias": "DarkSide Ransomware", "origin": "Eastern Europe", "type": "Cybercrime (Ransomware)", "active": "2020"},
+    "REvil": {"alias": "Sodinokibi", "origin": "Russia", "type": "Cybercrime (Ransomware)", "active": "2019"},
 }
 
+# Merge with stats
 stats = stats.merge(
     pd.DataFrame.from_dict(ACTOR_META, orient="index").reset_index().rename(columns={"index": "actor"}),
     on="actor",
     how="left"
 )
 
-stats.fillna(
-    {"origin": "Unknown", "type": "Unclassified", "active": "Since Unknown"},
-    inplace=True
+stats.fillna({
+    "alias": "Unknown",
+    "origin": "Unknown", 
+    "type": "Unclassified", 
+    "active": "Since Unknown"
+}, inplace=True)
+
+# Calculate threat levels
+stats['threat_level'] = stats.apply(
+    lambda row: determine_threat_level(
+        row['actor'], 
+        row['attacks'], 
+        row['countries'], 
+        row['sectors'],
+        row['type']
+    ), axis=1
 )
 
 # -------------------------------------------------------------------
@@ -134,7 +206,14 @@ with f3:
     sort_by = st.selectbox("Sort By", ["Total Attacks", "Alphabetical"])
 
 with f4:
-    view_all = st.button("View All Actors", use_container_width=True)
+    view_all_btn = st.button(
+        "View All Actors" if not st.session_state.show_all_actors else "Show Top 12",
+        use_container_width=True,
+        type="primary"
+    )
+    if view_all_btn:
+        st.session_state.show_all_actors = not st.session_state.show_all_actors
+        st.rerun()
 
 # -------------------------------------------------------------------
 # FILTER LOGIC
@@ -148,55 +227,121 @@ if search:
         | filtered["type"].str.contains(search, case=False, na=False)
     ]
 
+if threat_level != "All":
+    filtered = filtered[filtered["threat_level"] == threat_level]
+
 if sort_by == "Total Attacks":
     filtered = filtered.sort_values("attacks", ascending=False)
 else:
     filtered = filtered.sort_values("actor")
 
-if not view_all:
-    filtered = filtered.head(12)
+# Determine how many to show
+num_to_show = len(filtered) if st.session_state.show_all_actors else min(12, len(filtered))
+filtered = filtered.head(num_to_show)
 
 # -------------------------------------------------------------------
-# CARD GRID
+# DISPLAY CARDS IN 4-COLUMN GRID
 # -------------------------------------------------------------------
-cols = st.columns(4)
-for i, row in filtered.iterrows():
-    with cols[i % 4]:
-        st.markdown(
-            f"""
-            <div style="
-                background:{CARD_BG};
-                border:1px solid {BORDER};
-                border-radius:12px;
-                padding:1.2rem;
-                height:100%;
-            ">
-                <h3 style="margin-bottom:0.3rem;">{row.actor}</h3>
-                <p style="color:{TEXT_MUTED}; font-size:0.85rem;">
-                    Origin: {row.origin}<br>
-                    Type: {row.type}<br>
-                    Active: {row.active}
-                </p>
-                <div style="display:flex; justify-content:space-between; margin-top:1rem;">
-                    <div><strong>{int(row.attacks)}</strong><br><span style="font-size:0.75rem;">Attacks</span></div>
-                    <div><strong>{int(row.countries)}</strong><br><span style="font-size:0.75rem;">Countries</span></div>
-                    <div><strong>{int(row.sectors)}</strong><br><span style="font-size:0.75rem;">Sectors</span></div>
-                </div>
-                <a href="/Actor_Profile?actor={row.actor}" target="_blank"
-                   style="
-                       display:block;
-                       margin-top:1rem;
-                       padding:0.6rem;
-                       text-align:center;
-                       background:{CYHAWK_RED};
-                       color:white;
-                       border-radius:6px;
-                       text-decoration:none;
-                       font-weight:600;
-                   ">
-                   View Profile
-                </a>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+num_cols = 4
+num_actors = len(filtered)
+
+for i in range(0, num_actors, num_cols):
+    cols = st.columns(num_cols, gap="medium")
+    
+    for j in range(num_cols):
+        if i + j < num_actors:
+            row = filtered.iloc[i + j]
+            threat_badge_color = "#DA3633" if row['threat_level'] == 'Critical' else '#ff6b6b'
+            
+            with cols[j]:
+                with st.container(border=True):
+                    # Header with threat badge
+                    st.markdown(f"""
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: {TEXT}; flex: 1; padding-right: 1rem;">
+                                {row['actor']}
+                            </h3>
+                            <span style="background: {threat_badge_color}; color: white; padding: 0.25rem 0.6rem; 
+                                  border-radius: 12px; font-size: 0.65rem; font-weight: 700; 
+                                  text-transform: uppercase; white-space: nowrap;">
+                                {row['threat_level']}
+                            </span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Alias
+                    st.markdown(f"""
+                        <p style="font-size: 0.8rem; color: {TEXT_MUTED}; 
+                             font-style: italic; margin: 0 0 1rem 0;">
+                            {row['alias']}
+                        </p>
+                    """, unsafe_allow_html=True)
+                    
+                    # Info
+                    st.markdown(f"""
+                        <div style="font-size: 0.85rem; color: {TEXT_MUTED}; 
+                             margin-bottom: 1rem; line-height: 1.6;">
+                            <div><strong style="color: {TEXT_MUTED};">Origin:</strong> {row['origin']}</div>
+                            <div><strong style="color: {TEXT_MUTED};">Type:</strong> {row['type']}</div>
+                            <div><strong style="color: {TEXT_MUTED};">Active:</strong> {row['active']}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Stats
+                    stat_col1, stat_col2, stat_col3 = st.columns(3)
+                    with stat_col1:
+                        st.metric("Attacks", int(row['attacks']))
+                    with stat_col2:
+                        st.metric("Countries", int(row['countries']))
+                    with stat_col3:
+                        st.metric("Sectors", int(row['sectors']))
+                    
+                    # View Profile button
+                    st.markdown(f"""
+                        <a href="Actor_Profile?actor={row['actor']}" target="_blank" style="
+                            display: block;
+                            width: 100%;
+                            padding: 0.5rem;
+                            background: {CYHAWK_RED};
+                            color: white;
+                            text-align: center;
+                            text-decoration: none;
+                            border-radius: 6px;
+                            font-weight: 600;
+                            transition: all 0.3s ease;
+                        " onmouseover="this.style.background='{CYHAWK_RED_DARK}'" 
+                           onmouseout="this.style.background='{CYHAWK_RED}'">
+                            View Profile
+                        </a>
+                    """, unsafe_allow_html=True)
+
+# -------------------------------------------------------------------
+# STATUS MESSAGE
+# -------------------------------------------------------------------
+st.markdown("---")
+if st.session_state.show_all_actors:
+    st.success(f"✅ Showing all {num_actors} threat actors")
+else:
+    st.info(f"ℹ️ Showing top {num_to_show} of {len(stats)} threat actors")
+
+# -------------------------------------------------------------------
+# SUMMARY STATS
+# -------------------------------------------------------------------
+if not stats.empty:
+    st.markdown("---")
+    st.subheader("Threat Actor Summary")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Threat Actors", len(stats))
+    
+    with col2:
+        critical_count = len(stats[stats['threat_level'] == 'Critical'])
+        st.metric("Critical Threat Actors", critical_count)
+    
+    with col3:
+        st.metric("Total Attacks Tracked", int(stats['attacks'].sum()))
+    
+    with col4:
+        st.metric("Unique Countries", df['country'].nunique() if not df.empty else 0)
