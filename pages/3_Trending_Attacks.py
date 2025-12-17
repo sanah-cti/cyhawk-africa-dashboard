@@ -9,14 +9,14 @@ try:
     from navigation_utils import add_logo_and_branding, set_page_config as custom_set_page_config
     custom_set_page_config(
         page_title="Top 3 Trending Attacks | CyHawk Africa",
-        page_icon="🔒",
+        page_icon="assets/favicon.ico",
         layout="wide"
     )
     add_logo_and_branding()
 except ImportError:
     st.set_page_config(
         page_title="Top 3 Trending Attacks | CyHawk Africa",
-        page_icon="🔒",
+        page_icon="assets/favicon.ico",
         layout="wide"
     )
 
@@ -73,7 +73,7 @@ st.markdown(f"""
 
 /* Header */
 .trending-header {{
-    background: linear-gradient(135deg, {C['accent']} 0%, {CYHAWK_RED_DARK} 100%);
+    background: linear-gradient(135deg, #C41E3A 0%, {CYHAWK_RED_DARK} 100%);
     padding: 3rem 2rem;
     border-radius: 16px;
     margin-bottom: 2rem;
@@ -113,7 +113,7 @@ st.markdown(f"""
 }}
 
 .stContainer > div:hover {{
-    border-color: {C['accent']};
+    border-color: #C41E3A;
     box-shadow: 0 12px 32px rgba(196, 30, 58, 0.3);
 }}
 
@@ -268,7 +268,7 @@ def main():
             # Category badge
             st.markdown(f"""
                 <div style="display: inline-block; padding: 0.4rem 1rem; 
-                     background: rgba(196, 30, 58, 0.15); color: {C['accent']}; 
+                     background: rgba(196, 30, 58, 0.15); color: #C41E3A; 
                      border-radius: 20px; font-size: 0.75rem; font-weight: 700; 
                      text-transform: uppercase; margin-bottom: 1rem;">
                     {attack['category']}
@@ -277,7 +277,7 @@ def main():
             
             # Title
             st.markdown(f"""
-                <h2 style="font-size: 1.3rem; font-weight: 700; color: {C['text']}; 
+                <h2 style="font-size: 1.3rem; font-weight: 700; color: inherit; 
                      margin: 1rem 0; line-height: 1.4; padding-right: 3rem;">
                     {attack['title']}
                 </h2>
@@ -285,7 +285,7 @@ def main():
             
             # Description
             st.markdown(f"""
-                <p style="font-size: 0.95rem; color: {C['text_secondary']}; 
+                <p style="font-size: 0.95rem; color: rgba(128, 128, 128, 0.8); 
                      line-height: 1.6; margin: 1rem 0;">
                     {attack['description']}
                 </p>
@@ -298,7 +298,7 @@ def main():
             st.markdown(f"""
                 <div style="display: flex; gap: 1rem; padding-top: 1rem; 
                      border-top: 1px solid {C['border']}; font-size: 0.85rem; 
-                     color: {C['text_muted']}; margin-bottom: 1rem;">
+                     color: rgba(128, 128, 128, 0.6); margin-bottom: 1rem;">
                     <span><strong>Published:</strong> {attack['date']}</span>
                     <span><strong>Read:</strong> {attack['read_time']}</span>
                 </div>
