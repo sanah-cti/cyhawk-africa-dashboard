@@ -56,30 +56,78 @@ df = load_incidents()
 # -----------------------------------------------------------------------------
 # API FETCHERS
 # -----------------------------------------------------------------------------
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner=False)
 def fetch_otx(actor):
-    key = st.secrets.get("ALIENVAULT_OTX_API_KEY")
-    if not key:
-        return None
+    """
+    Safely fetch AlienVault OTX intelligence.
+    Degrades gracefully on timeout or rate limiting.
+    """
+    api_key = st.secrets.get("ALIENVAULT_OTX_API_KEY", None)
 
-    r = requests.get(
-        "https://otx.alienvault.com/api/v1/search/pulses",
-        headers={"X-OTX-API-KEY": key},
-        params={"q": actor},
-        timeout=15
-    )
-    if r.status_code != 200:
-        return None
+    if not api_key:
+        return {
+            "available": False,
+            "error": "OTX API key not configured",
+            "pulses": [],
+            "tags": [],
+            "iocs": []
+        }
 
-    pulses = r.json().get("results", [])
-    tags, iocs = set(), []
+    url = "https://otx.alienvault.com/api/v1/search/pulses"
+    headers = {"X-OTX-API-KEY": api_key}
 
-    for p in pulses:
-        tags.update(p.get("tags", []))
-        for i in p.get("indicators", []):
-            iocs.append((i.get("type"), i.get("indicator")))
+    try:
+        response = requests.get(
+            url,
+            headers=headers,
+            params={"q": actor, "limit": 20},
+            timeout=8  # reduced timeout for Streamlit Cloud
+        )
 
-    return {"pulses": pulses, "tags": list(tags), "iocs": iocs}
+        if response.status_code != 200:
+            return {
+                "available": False,
+                "error": f"OTX returned {response.status_code}",
+                "pulses": [],
+                "tags": [],
+                "iocs": []
+            }
+
+        data = response.json()
+        pulses = data.get("results", [])
+
+        tags = set()
+        iocs = []
+
+        for pulse in pulses:
+            tags.update(pulse.get("tags", []))
+            for ind in pulse.get("indicators", []):
+                iocs.append((ind.get("type"), ind.get("indicator")))
+
+        return {
+            "available": True,
+            "pulses": pulses,
+            "tags": list(tags),
+            "iocs": iocs
+        }
+
+    except requests.exceptions.Timeout:
+        return {
+            "available": False,
+            "error": "AlienVault OTX timeout",
+            "pulses": [],
+            "tags": [],
+            "iocs": []
+        }
+
+    except Exception as e:
+        return {
+            "available": False,
+            "error": str(e),
+            "pulses": [],
+            "tags": [],
+            "iocs": []
+        }
 
 @st.cache_data(ttl=3600)
 def fetch_ransomware(actor):
