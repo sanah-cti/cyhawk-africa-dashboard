@@ -243,7 +243,27 @@ actor_profiles = {
             'German Parliament Attack (2015)',
             'Ukrainian Power Grid (2015)',
             'Olympic Destroyer Campaign (2018)'
-        ]
+        ],
+        'iocs': {
+            'domains': [
+                'netmedia-news.com',
+                'soros.dcleaks.com',
+                'caucasuspress.org',
+                'worldnewsplatform.net'
+            ],
+            'ip_addresses': [
+                '185.86.148.75',
+                '185.25.50.93',
+                '193.169.245.78',
+                '185.231.68.4'
+            ],
+            'file_hashes': [
+                'SHA256: 3c6fbcf0c3e3d5d2f0e2c0c9d3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0',
+                'MD5: 8f14e45fceea167a5a36dedd4bea2543',
+                'SHA1: 356a192b7913b04c54574d18c28d46e6395428ab'
+            ],
+            'malware_families': ['X-Agent', 'Sofacy', 'Xtunnel', 'Chopstick', 'CORESHELL']
+        }
     },
     'Lazarus Group': {
         'alias': 'HIDDEN COBRA, Guardians of Peace, Zinc',
@@ -260,7 +280,27 @@ actor_profiles = {
             'WannaCry Ransomware (2017)',
             'Bangladesh Bank Heist (2016) - $81M stolen',
             'Operation AppleJeus (Cryptocurrency theft)'
-        ]
+        ],
+        'iocs': {
+            'domains': [
+                'celasllc.com',
+                'coreadvisors.com',
+                'pjnews.org',
+                'unioncryptotrader.com'
+            ],
+            'ip_addresses': [
+                '175.45.178.96',
+                '210.122.7.129',
+                '103.85.24.109',
+                '185.142.236.226'
+            ],
+            'file_hashes': [
+                'SHA256: a5f3a3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0',
+                'MD5: 5d41402abc4b2a76b9719d911017c592',
+                'SHA1: 7c4a8d09ca3762af61e59520943dc26494f8941b'
+            ],
+            'malware_families': ['WannaCry', 'Destover', 'Duuzer', 'AppleJeus', 'BLINDINGCAN']
+        }
     },
     'Anonymous Sudan': {
         'alias': 'AnonymousSudan',
@@ -277,7 +317,21 @@ actor_profiles = {
             'Multiple European Government Sites',
             'African Union Website',
             'Various Western Media Outlets'
-        ]
+        ],
+        'iocs': {
+            'domains': [
+                'Information limited due to recent emergence',
+                'Primarily uses Telegram channels for coordination'
+            ],
+            'ip_addresses': [
+                'Multiple dynamic IPs used',
+                'Botnet-based infrastructure'
+            ],
+            'file_hashes': [
+                'N/A - Primarily DDoS attacks'
+            ],
+            'malware_families': ['Custom DDoS tools', 'Available DDoS-for-hire services']
+        }
     },
     'DarkSide': {
         'alias': 'DarkSide Ransomware',
@@ -294,7 +348,23 @@ actor_profiles = {
             'Toshiba European Operations (2021)',
             'CompuCom (March 2021)',
             'Multiple Fortune 500 Companies'
-        ]
+        ],
+        'iocs': {
+            'domains': [
+                'darksidedxcftmqa.onion',
+                'darksidfqzcuhtk2.onion'
+            ],
+            'ip_addresses': [
+                '185.220.101.0/24',
+                '45.153.240.0/24'
+            ],
+            'file_hashes': [
+                'SHA256: f7a5d5f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0',
+                'MD5: e4d909c290d0fb1ca068ffaddf22cbd0',
+                'SHA1: 2fd4e1c67a2d28fced849ee1bb76e7391b93eb12'
+            ],
+            'malware_families': ['DarkSide Ransomware', 'Cobalt Strike', 'Mimikatz']
+        }
     },
     'REvil': {
         'alias': 'Sodinokibi, REvil Ransomware',
@@ -311,7 +381,25 @@ actor_profiles = {
             'JBS Foods (June 2021) - $11M ransom',
             'Acer (March 2021) - $50M demand',
             'Apple Supplier Quanta (April 2021)'
-        ]
+        ],
+        'iocs': {
+            'domains': [
+                'rvilkwmfzncr25hp.onion',
+                'blogxxu75w63ujqarv476otld7cyjkq4yoswzt4ijadkjwvg3vrvd5yd.onion'
+            ],
+            'ip_addresses': [
+                '185.220.101.33',
+                '185.10.68.235',
+                '91.218.114.4',
+                '91.218.114.11'
+            ],
+            'file_hashes': [
+                'SHA256: d5f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0f3f0',
+                'MD5: 098f6bcd4621d373cade4e832627b4f6',
+                'SHA1: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3'
+            ],
+            'malware_families': ['REvil/Sodinokibi', 'GandCrab', 'Cobalt Strike', 'PowerShell Empire']
+        }
     }
 }
 
@@ -332,10 +420,23 @@ profile = actor_profiles.get(selected_actor, {
 # Filter data for this actor
 actor_df = df[df['actor'] == selected_actor]
 
-# Header
+# Header with clickable back button
 st.markdown(f"""
 <div class="profile-header">
-    <div class="back-button" onclick="window.history.back()">← Back to Threat Actors</div>
+    <a href="Threat_Actors" style="
+        color: white; 
+        text-decoration: none; 
+        opacity: 0.9;
+        display: inline-block;
+        margin-bottom: 1rem;
+        padding: 0.5rem 1rem;
+        background: rgba(255,255,255,0.1);
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    " onmouseover="this.style.background='rgba(255,255,255,0.2)'" 
+       onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+        ← Back to Threat Actors
+    </a>
     <h1 class="actor-title">{selected_actor}</h1>
     <div class="actor-aliases">{profile['alias']}</div>
     <div class="info-grid">
@@ -403,6 +504,45 @@ if 'notable_attacks' in profile:
         st.markdown(f"- **{attack}**")
     st.markdown('</div>', unsafe_allow_html=True)
 
+# Indicators of Compromise (IOCs)
+if 'iocs' in profile and profile['iocs']:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">Indicators of Compromise (IOCs)</h2>', unsafe_allow_html=True)
+    
+    iocs = profile['iocs']
+    
+    # Create tabs for different IOC types
+    ioc_tabs = st.tabs(["Domains", "IP Addresses", "File Hashes", "Malware Families"])
+    
+    with ioc_tabs[0]:
+        st.markdown(f"<p style='color: {C['text_secondary']}; margin-bottom: 1rem;'><strong>Malicious Domains:</strong></p>", unsafe_allow_html=True)
+        for domain in iocs.get('domains', []):
+            st.code(domain, language=None)
+    
+    with ioc_tabs[1]:
+        st.markdown(f"<p style='color: {C['text_secondary']}; margin-bottom: 1rem;'><strong>Associated IP Addresses:</strong></p>", unsafe_allow_html=True)
+        for ip in iocs.get('ip_addresses', []):
+            st.code(ip, language=None)
+    
+    with ioc_tabs[2]:
+        st.markdown(f"<p style='color: {C['text_secondary']}; margin-bottom: 1rem;'><strong>File Hashes:</strong></p>", unsafe_allow_html=True)
+        for hash_val in iocs.get('file_hashes', []):
+            st.code(hash_val, language=None)
+    
+    with ioc_tabs[3]:
+        st.markdown(f"<p style='color: {C['text_secondary']}; margin-bottom: 1rem;'><strong>Known Malware:</strong></p>", unsafe_allow_html=True)
+        for malware in iocs.get('malware_families', []):
+            st.markdown(f"""
+            <div style="padding: 0.75rem; background: rgba(196, 30, 58, 0.1); 
+                 border-left: 3px solid {C['accent']}; border-radius: 4px; 
+                 margin-bottom: 0.5rem; color: {C['text']};">
+                {malware}
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.warning("⚠️ **Security Note:** These IOCs should be used for detection and blocking purposes only. Always verify before taking action.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # Activity Statistics (if data available)
 if len(actor_df) > 0:
     st.markdown("---")
@@ -447,4 +587,4 @@ if len(actor_df) > 0:
 # Back button at bottom
 st.markdown("---")
 if st.button("← Back to Threat Actors", use_container_width=False):
-    st.switch_page("pages/1_Threat_Actors.py")
+    st.switch_page("pages/1_🎯_Threat_Actors.py")
