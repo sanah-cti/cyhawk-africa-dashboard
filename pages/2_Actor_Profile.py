@@ -1583,4 +1583,4 @@ col1, col2 = st.columns([1, 5])
 with col1:
     st.markdown(f'<a href="/Threat_Actors" style="display: inline-block; padding: 0.75rem 1.5rem; background: transparent; color: {CYHAWK_RED}; border: 2px solid {CYHAWK_RED}; border-radius: 6px; text-decoration: none; font-weight: 600;">← Back</a>', unsafe_allow_html=True)
 with col2:
-    st.success(f"✅ Comprehensive threat intelligence report generated for {selected_actor}")
+    st.success(f"✅ Threat intelligence report generated for {selected_actor}")
