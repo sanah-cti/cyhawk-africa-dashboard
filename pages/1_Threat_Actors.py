@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 import os
 import requests
+import streamlit.components.v1 as components
 
 # Import navigation utilities
 try:
