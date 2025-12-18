@@ -127,14 +127,14 @@ st.markdown(f"""
     font-size: 0.9rem;
 }}
 
-.-meter {{
+.risk-meter {{
     text-align: center;
     padding: 2rem;
     border-radius: 12px;
     margin: 1rem 0;
 }}
 
-.-critical {{
+.risk-critical {{
     background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(185, 28, 28, 0.1));
     border: 2px solid #DC2626;
 }}
@@ -178,54 +178,89 @@ def load_incidents():
 def fetch_ransomware_live_comprehensive(actor_name):
     """
     Fetch comprehensive ransomware intelligence from ransomware.live
-    Tries multiple endpoints for complete intelligence
+    Returns: IOCs, YARA rules, locations, vulnerabilities, tools, victims
     """
     base = "https://api.ransomware.live"
     result = {
         'group_info': None,
         'victims': [],
-        'negotiations': [],
         'iocs': [],
-        'ransom_notes': [],
-        'yara_rules': []
+        'yara_rules': [],
+        'locations': [],
+        'vulnerabilities': [],
+        'tools': []
     }
     
     # Normalize actor name for API
     actor_normalized = actor_name.lower().replace(' ', '').replace('-', '').replace('_', '')
-    
-    # Try to get group information
-    endpoints = [
-        f"/groups",
-        f"/recentvictims",
-        f"/group/{actor_normalized}",
+    name_variants = [
+        actor_name.lower(),
+        actor_name.replace(' ', '').lower(),
+        actor_name.replace(' ', '-').lower(),
+        actor_name.replace('-', '').lower(),
+        actor_name.replace('_', '').lower(),
     ]
     
-    # Get recent victims and filter
+    # 1. Get recent victims and filter
     try:
         response = requests.get(f"{base}/recentvictims", timeout=15)
         if response.status_code == 200:
             all_victims = response.json()
             
-            # Filter victims for this actor
-            name_variants = [
-                actor_name.lower(),
-                actor_name.replace(' ', '').lower(),
-                actor_name.replace(' ', '-').lower(),
-                actor_name.replace('-', '').lower()
-            ]
-            
             for victim in all_victims:
                 group_name = victim.get('group_name', '').lower()
                 if any(variant in group_name or group_name in variant for variant in name_variants):
                     result['victims'].append(victim)
+                    
+                    # Extract vulnerabilities from victim data
+                    vuln = victim.get('vulnerability', '')
+                    if vuln and vuln not in result['vulnerabilities']:
+                        result['vulnerabilities'].append(vuln)
     except:
         pass
     
-    # Try to get group-specific data
+    # 2. Get group-specific data
     try:
         response = requests.get(f"{base}/group/{actor_normalized}", timeout=15)
         if response.status_code == 200:
-            result['group_info'] = response.json()
+            group_data = response.json()
+            result['group_info'] = group_data
+            
+            # Extract metadata if available
+            if isinstance(group_data, dict):
+                result['locations'] = group_data.get('locations', [])
+                result['tools'] = group_data.get('tools', [])
+                vulns = group_data.get('vulnerabilities', [])
+                if vulns:
+                    result['vulnerabilities'].extend(vulns)
+    except:
+        pass
+    
+    # 3. Get IOCs (Indicators of Compromise)
+    try:
+        response = requests.get(f"{base}/iocs", timeout=15)
+        if response.status_code == 200:
+            all_iocs = response.json()
+            if isinstance(all_iocs, list):
+                for ioc in all_iocs:
+                    if isinstance(ioc, dict):
+                        ioc_group = ioc.get('group', '').lower()
+                        if any(variant in ioc_group for variant in name_variants):
+                            result['iocs'].append(ioc)
+    except:
+        pass
+    
+    # 4. Get YARA rules
+    try:
+        response = requests.get(f"{base}/yara", timeout=15)
+        if response.status_code == 200:
+            yara_rules = response.json()
+            if isinstance(yara_rules, list):
+                for rule in yara_rules:
+                    if isinstance(rule, dict):
+                        rule_name = rule.get('name', '').lower()
+                        if any(variant in rule_name for variant in name_variants):
+                            result['yara_rules'].append(rule)
     except:
         pass
     
@@ -969,7 +1004,6 @@ with col1:
 # ============================================================================
 
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
-
 st.markdown('<h2 class="section-title">🎯 Risk Assessment</h2>', unsafe_allow_html=True)
 
 col1, col2 = st.columns([1, 2])
@@ -1415,6 +1449,78 @@ if ransomware_data and ransomware_data.get('victims'):
     """
     
     st.markdown(defensive_intel)
+    
+    # ========== TECHNICAL INTELLIGENCE ==========
+    st.markdown("---")
+    st.markdown("### 🔬 Technical Intelligence")
+    
+    # IOCs (Indicators of Compromise)
+    if ransomware_data.get('iocs'):
+        with st.expander(f"🚨 Indicators of Compromise (IOCs) - {len(ransomware_data['iocs'])} Available", expanded=True):
+            st.markdown("""
+            **Usage:** Deploy these IOCs to security infrastructure (SIEM, EDR, Firewall) for detection and blocking.
+            """)
+            
+            ioc_data = []
+            for ioc in ransomware_data['iocs'][:50]:  # Show first 50
+                if isinstance(ioc, dict):
+                    ioc_data.append({
+                        'Type': ioc.get('type', 'Unknown'),
+                        'Value': ioc.get('value', 'N/A'),
+                        'Context': ioc.get('context', 'N/A')[:50]
+                    })
+            
+            if ioc_data:
+                ioc_df = pd.DataFrame(ioc_data)
+                st.dataframe(ioc_df, use_container_width=True, hide_index=True)
+            else:
+                st.info("IOC data structure not available in standard format.")
+    
+    # YARA Rules
+    if ransomware_data.get('yara_rules'):
+        with st.expander(f"📜 YARA Rules - {len(ransomware_data['yara_rules'])} Available", expanded=False):
+            st.markdown("""
+            **Usage:** Deploy YARA rules for malware detection and hunting operations.
+            """)
+            
+            for i, rule in enumerate(ransomware_data['yara_rules'][:5], 1):
+                if isinstance(rule, dict):
+                    rule_name = rule.get('name', f'Rule {i}')
+                    rule_content = rule.get('content', rule.get('rule', 'No content available'))
+                    
+                    st.markdown(f"**{rule_name}**")
+                    st.code(rule_content, language='yara')
+                    st.markdown("---")
+    
+    # Known Locations / Infrastructure
+    if ransomware_data.get('locations'):
+        with st.expander(f"🌍 Known Locations & Infrastructure - {len(ransomware_data['locations'])} Identified", expanded=False):
+            st.markdown("**Geographic locations and infrastructure associated with this threat actor:**")
+            
+            for location in ransomware_data['locations'][:10]:
+                st.markdown(f"- {location}")
+    
+    # Vulnerabilities Exploited
+    if ransomware_data.get('vulnerabilities'):
+        with st.expander(f"🔓 Vulnerabilities Exploited - {len(ransomware_data['vulnerabilities'])} Known", expanded=True):
+            st.markdown("""
+            **Priority Action:** Ensure all systems are patched against these vulnerabilities.
+            """)
+            
+            for vuln in ransomware_data['vulnerabilities'][:20]:
+                st.markdown(f"""
+                <div class="ioc-code">
+                    🔴 <strong>{vuln}</strong>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    # Tools Used
+    if ransomware_data.get('tools'):
+        with st.expander(f"🛠️ Tools & Techniques - {len(ransomware_data['tools'])} Identified", expanded=False):
+            st.markdown("**Tools and software commonly used by this threat actor:**")
+            
+            for tool in ransomware_data['tools'][:15]:
+                st.markdown(f"- **{tool}**")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
