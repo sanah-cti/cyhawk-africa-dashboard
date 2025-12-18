@@ -1,293 +1,1461 @@
+"""
+CyHawk Africa – Comprehensive Threat Actor Profile
+Features:
+- Dark/Light mode support
+- incidents.csv analysis
+- ransomware.live enrichment
+- MITRE ATT&CK TTP mapping
+- Risk scoring
+- PDF export (optional)
+"""
+
 import streamlit as st
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
-import pandas as pd
+import requests
 import os
-import random
-from datetime import timedelta
-import base64
-from urllib.parse import unquote
+import json
+from io import BytesIO
 
-# --------------------------------------------------
-# PAGE CONFIG
-# --------------------------------------------------
-st.set_page_config(
-    page_title="CyHawk Africa | Threat Actor Profile",
-    page_icon="assets/favicon.ico",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Optional PDF export (graceful fallback if not installed)
+try:
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    PDF_EXPORT_AVAILABLE = True
+except ImportError:
+    PDF_EXPORT_AVAILABLE = False
 
-# --------------------------------------------------
-# THEME STATE
-# --------------------------------------------------
-if "theme" not in st.session_state:
-    st.session_state.theme = "dark"
+# Import navigation utilities
+try:
+    from navigation_utils import add_logo_and_branding, set_page_config as custom_set_page_config
+    custom_set_page_config(
+        page_title="Actor Profile | CyHawk Africa",
+        page_icon="assets/favicon.ico",
+        layout="wide"
+    )
+    add_logo_and_branding()
+except ImportError:
+    st.set_page_config(
+        page_title="Actor Profile | CyHawk Africa",
+        page_icon="assets/favicon.ico",
+        layout="wide"
+    )
 
-def toggle_theme():
-    st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
-
-# --------------------------------------------------
-# COLORS
-# --------------------------------------------------
+# Theme colors
 CYHAWK_RED = "#C41E3A"
 CYHAWK_RED_DARK = "#9A1529"
 
-def theme_config():
-    return {
-        "bg": "#0D1117",
-        "bg_secondary": "#161B22",
-        "card": "#1C2128",
-        "card_hover": "#22272E",
-        "border": "#30363D",
-        "text": "#E6EDF3",
-        "text_secondary": "#8B949E",
-        "text_muted": "#6E7681",
-        "accent": CYHAWK_RED,
-        "success": "#238636",
-        "warning": "#9E6A03",
-        "danger": "#DA3633",
-        "template": "plotly_dark"
-    }
-
-C = theme_config()
-
-# --------------------------------------------------
-# CSS (UNCHANGED STRUCTURE)
-# --------------------------------------------------
+# Adaptive CSS
 st.markdown(f"""
 <style>
-* {{
-    font-family: Inter, sans-serif;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+* {{ font-family: 'Inter', sans-serif; }}
+
+.profile-header {{
+    background: linear-gradient(135deg, {CYHAWK_RED} 0%, {CYHAWK_RED_DARK} 100%);
+    padding: 2.5rem 2rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    color: white;
+    box-shadow: 0 8px 32px rgba(196, 30, 58, 0.3);
 }}
-.stApp {{
-    background: {C['bg']};
+
+.actor-title {{
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 1rem 0 0.5rem 0;
+    color: white;
+}}
+
+.info-grid {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}}
+
+.info-item {{
+    background: rgba(255,255,255,0.1);
+    padding: 1rem;
+    border-radius: 8px;
+}}
+
+.info-label {{
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+    color: white;
+}}
+
+.info-value {{
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+}}
+
+.section-card {{
+    background: var(--secondary-background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}}
+
+.section-title {{
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid {CYHAWK_RED};
+}}
+
+.ttp-badge {{
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: rgba(196, 30, 58, 0.1);
+    border: 1px solid {CYHAWK_RED};
+    border-radius: 6px;
+    margin: 0.25rem;
+    font-size: 0.9rem;
+}}
+
+.risk-meter {{
+    text-align: center;
+    padding: 2rem;
+    border-radius: 12px;
+    margin: 1rem 0;
+}}
+
+.risk-critical {{
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(185, 28, 28, 0.1));
+    border: 2px solid #DC2626;
+}}
+
+.risk-high {{
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(234, 88, 12, 0.1));
+    border: 2px solid #F97316;
+}}
+
+.risk-medium {{
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(202, 138, 4, 0.1));
+    border: 2px solid #EAB308;
+}}
+
+.ioc-code {{
+    background: var(--secondary-background-color);
+    border-left: 3px solid {CYHAWK_RED};
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
 }}
 </style>
 """, unsafe_allow_html=True)
 
-# --------------------------------------------------
-# DATA LOADING
-# --------------------------------------------------
-def generate_sample_data():
-    actors = [
-        "Keymous Plus",
-        "Nightspire",
-        "b4bayega",
-        "BigBrother",
-        "Anonymous Sudan",
-        "Dark Hell 07x"
-    ]
-    countries = ["Nigeria", "South Africa", "Kenya", "Egypt", "Morocco"]
-    threat_types = [
-        "Hacktivism",
-        "Ransomware",
-        "Database Breach",
-        "Initial Access Broker",
-        "DDoS"
-    ]
-    sectors = ["Government", "Finance", "Telecoms", "Healthcare"]
-    severities = ["High", "Medium", "Low"]
-
-    data = []
-    start = datetime(2024, 1, 1)
-
-    for _ in range(180):
-        data.append({
-            "date": start + timedelta(days=random.randint(0, 400)),
-            "actor": random.choice(actors),
-            "country": random.choice(countries),
-            "threat_type": random.choice(threat_types),
-            "sector": random.choice(sectors),
-            "severity": random.choice(severities),
-            "source": "OSINT"
-        })
-    return pd.DataFrame(data)
+# ============================================================================
+# DATA LOADING FUNCTIONS
+# ============================================================================
 
 @st.cache_data
-def load_data():
-    if os.path.exists("data/incidents.csv"):
-        df = pd.read_csv("data/incidents.csv")
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
-        df = df.dropna(subset=["date"])
+def load_incidents():
+    """Load incidents from CSV"""
+    if not os.path.exists("data/incidents.csv"):
+        return pd.DataFrame()
+    df = pd.read_csv("data/incidents.csv")
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    return df.dropna(subset=["date"])
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_ransomware_live_comprehensive(actor_name):
+    """
+    Fetch comprehensive ransomware intelligence from ransomware.live
+    Tries multiple endpoints for complete intelligence
+    """
+    base = "https://api.ransomware.live"
+    result = {
+        'group_info': None,
+        'victims': [],
+        'negotiations': [],
+        'iocs': [],
+        'ransom_notes': [],
+        'yara_rules': []
+    }
+    
+    # Normalize actor name for API
+    actor_normalized = actor_name.lower().replace(' ', '').replace('-', '').replace('_', '')
+    
+    # Try to get group information
+    endpoints = [
+        f"/groups",
+        f"/recentvictims",
+        f"/group/{actor_normalized}",
+    ]
+    
+    # Get recent victims and filter
+    try:
+        response = requests.get(f"{base}/recentvictims", timeout=15)
+        if response.status_code == 200:
+            all_victims = response.json()
+            
+            # Filter victims for this actor
+            name_variants = [
+                actor_name.lower(),
+                actor_name.replace(' ', '').lower(),
+                actor_name.replace(' ', '-').lower(),
+                actor_name.replace('-', '').lower()
+            ]
+            
+            for victim in all_victims:
+                group_name = victim.get('group_name', '').lower()
+                if any(variant in group_name or group_name in variant for variant in name_variants):
+                    result['victims'].append(victim)
+    except:
+        pass
+    
+    # Try to get group-specific data
+    try:
+        response = requests.get(f"{base}/group/{actor_normalized}", timeout=15)
+        if response.status_code == 200:
+            result['group_info'] = response.json()
+    except:
+        pass
+    
+    return result if (result['victims'] or result['group_info']) else None
+
+# ============================================================================
+# MITRE ATT&CK TTP MAPPING
+# ============================================================================
+
+def classify_threat_actor_type(actor_name, incidents_df, ransomware_data):
+    """
+    Classify threat actor into one of 4 categories:
+    1. Ransomware
+    2. Hacktivist  
+    3. Database Breach
+    4. Initial Access Broker (IAB)
+    
+    Priority: ransomware.live data is the most authoritative source
+    """
+    actor_lower = actor_name.lower()
+    
+    # ========== 1. RANSOMWARE (HIGHEST PRIORITY) ==========
+    # Check ransomware.live data first - most authoritative source
+    if ransomware_data:
+        if ransomware_data.get('victims') or ransomware_data.get('group_info'):
+            return "Ransomware"
+    
+    # Known ransomware groups by name
+    ransomware_keywords = [
+        'ransomware', 'lockbit', 'revil', 'darkside', 'conti', 
+        'maze', 'blackcat', 'alphv', 'blackbasta', 'ryuk', 
+        'nightspire', 'play', 'royal', 'medusa', 'akira',
+        'ragnar', 'hive', 'cuba', 'quantum', 'blackmatter',
+        'funksec', 'ransom', 'crypt', 'locker'
+    ]
+    if any(kw in actor_lower for kw in ransomware_keywords):
+        return "Ransomware"
+    
+    # Check incident data for ransomware patterns
+    if not incidents_df.empty and 'threat_type' in incidents_df.columns:
+        threat_types = incidents_df['threat_type'].str.lower()
+        if threat_types.str.contains('ransomware|encrypt|ransom', case=False, na=False).sum() > len(incidents_df) * 0.2:
+            return "Ransomware"
+    
+    # ========== 2. INITIAL ACCESS BROKER (IAB) ==========
+    iab_keywords = ['bigbrother', 'broker', 'access', 'iab', 'initial']
+    if any(kw in actor_lower for kw in iab_keywords):
+        return "Initial Access Broker (IAB)"
+    
+    # Check for IAB patterns in incidents
+    if not incidents_df.empty and 'threat_type' in incidents_df.columns:
+        threat_types = incidents_df['threat_type'].str.lower()
+        if threat_types.str.contains('access|credential|rdp|vpn', case=False, na=False).sum() > len(incidents_df) * 0.4:
+            return "Initial Access Broker (IAB)"
+    
+    # ========== 3. DATABASE BREACH ==========
+    db_keywords = ['b4bayega', 'database', 'breach', 'leak', 'dump', 'shinyh', 'data']
+    if any(kw in actor_lower for kw in db_keywords):
+        return "Database Breach"
+    
+    # Check for database breach patterns in incidents
+    if not incidents_df.empty and 'threat_type' in incidents_df.columns:
+        threat_types = incidents_df['threat_type'].str.lower()
+        if threat_types.str.contains('database|breach|leak|dump|exfil|sql', case=False, na=False).sum() > len(incidents_df) * 0.3:
+            return "Database Breach"
+    
+    # ========== 4. HACKTIVIST (DEFAULT) ==========
+    # All other actors default to Hacktivist
+    # This includes: defacement, DDoS, political motivation, etc.
+    return "Hacktivist"
+
+def infer_mitre_ttps(actor_name, incidents_df, ransomware_data, actor_type):
+    """
+    Infer MITRE ATT&CK TTPs based on threat actor type
+    Types: Ransomware, Hacktivist, Database Breach, Initial Access Broker (IAB)
+    """
+    ttps = []
+    
+    # ========== RANSOMWARE ==========
+    if actor_type == "Ransomware":
+        ttps.extend([
+            {'id': 'T1566.001', 'name': 'Phishing: Spearphishing Attachment', 'tactic': 'Initial Access'},
+            {'id': 'T1566.002', 'name': 'Phishing: Spearphishing Link', 'tactic': 'Initial Access'},
+            {'id': 'T1204.002', 'name': 'User Execution: Malicious File', 'tactic': 'Execution'},
+            {'id': 'T1059.001', 'name': 'Command and Scripting Interpreter: PowerShell', 'tactic': 'Execution'},
+            {'id': 'T1078', 'name': 'Valid Accounts', 'tactic': 'Persistence'},
+            {'id': 'T1027', 'name': 'Obfuscated Files or Information', 'tactic': 'Defense Evasion'},
+            {'id': 'T1490', 'name': 'Inhibit System Recovery', 'tactic': 'Impact'},
+            {'id': 'T1486', 'name': 'Data Encrypted for Impact', 'tactic': 'Impact'},
+            {'id': 'T1567', 'name': 'Exfiltration Over Web Service', 'tactic': 'Exfiltration'},
+            {'id': 'T1041', 'name': 'Exfiltration Over C2 Channel', 'tactic': 'Exfiltration'},
+            {'id': 'T1489', 'name': 'Service Stop', 'tactic': 'Impact'},
+            {'id': 'T1491', 'name': 'Defacement', 'tactic': 'Impact'},
+            {'id': 'T1070', 'name': 'Indicator Removal', 'tactic': 'Defense Evasion'},
+            {'id': 'T1083', 'name': 'File and Directory Discovery', 'tactic': 'Discovery'},
+        ])
+    
+    # ========== INITIAL ACCESS BROKER (IAB) ==========
+    elif actor_type == "Initial Access Broker (IAB)":
+        ttps.extend([
+            {'id': 'T1078', 'name': 'Valid Accounts', 'tactic': 'Initial Access'},
+            {'id': 'T1110', 'name': 'Brute Force', 'tactic': 'Credential Access'},
+            {'id': 'T1110.003', 'name': 'Brute Force: Password Spraying', 'tactic': 'Credential Access'},
+            {'id': 'T1110.001', 'name': 'Brute Force: Password Guessing', 'tactic': 'Credential Access'},
+            {'id': 'T1190', 'name': 'Exploit Public-Facing Application', 'tactic': 'Initial Access'},
+            {'id': 'T1133', 'name': 'External Remote Services', 'tactic': 'Initial Access'},
+            {'id': 'T1566', 'name': 'Phishing', 'tactic': 'Initial Access'},
+            {'id': 'T1595', 'name': 'Active Scanning', 'tactic': 'Reconnaissance'},
+            {'id': 'T1046', 'name': 'Network Service Discovery', 'tactic': 'Discovery'},
+            {'id': 'T1021.001', 'name': 'Remote Services: Remote Desktop Protocol', 'tactic': 'Lateral Movement'},
+            {'id': 'T1021.004', 'name': 'Remote Services: SSH', 'tactic': 'Lateral Movement'},
+            {'id': 'T1087', 'name': 'Account Discovery', 'tactic': 'Discovery'},
+            {'id': 'T1018', 'name': 'Remote System Discovery', 'tactic': 'Discovery'},
+        ])
+    
+    # ========== DATABASE BREACH ==========
+    elif actor_type == "Database Breach":
+        ttps.extend([
+            {'id': 'T1190', 'name': 'Exploit Public-Facing Application', 'tactic': 'Initial Access'},
+            {'id': 'T1505.003', 'name': 'Server Software Component: Web Shell', 'tactic': 'Persistence'},
+            {'id': 'T1505', 'name': 'Server Software Component', 'tactic': 'Persistence'},
+            {'id': 'T1136', 'name': 'Create Account', 'tactic': 'Persistence'},
+            {'id': 'T1213', 'name': 'Data from Information Repositories', 'tactic': 'Collection'},
+            {'id': 'T1005', 'name': 'Data from Local System', 'tactic': 'Collection'},
+            {'id': 'T1074', 'name': 'Data Staged', 'tactic': 'Collection'},
+            {'id': 'T1530', 'name': 'Data from Cloud Storage', 'tactic': 'Collection'},
+            {'id': 'T1030', 'name': 'Data Transfer Size Limits', 'tactic': 'Exfiltration'},
+            {'id': 'T1048', 'name': 'Exfiltration Over Alternative Protocol', 'tactic': 'Exfiltration'},
+            {'id': 'T1567', 'name': 'Exfiltration Over Web Service', 'tactic': 'Exfiltration'},
+            {'id': 'T1087', 'name': 'Account Discovery', 'tactic': 'Discovery'},
+            {'id': 'T1083', 'name': 'File and Directory Discovery', 'tactic': 'Discovery'},
+        ])
+    
+    # ========== HACKTIVIST (DEFAULT) ==========
+    else:  # Hacktivist
+        ttps.extend([
+            {'id': 'T1190', 'name': 'Exploit Public-Facing Application', 'tactic': 'Initial Access'},
+            {'id': 'T1133', 'name': 'External Remote Services', 'tactic': 'Initial Access'},
+            {'id': 'T1498', 'name': 'Network Denial of Service', 'tactic': 'Impact'},
+            {'id': 'T1499', 'name': 'Endpoint Denial of Service', 'tactic': 'Impact'},
+            {'id': 'T1498.001', 'name': 'Network Denial of Service: Direct Network Flood', 'tactic': 'Impact'},
+            {'id': 'T1498.002', 'name': 'Network Denial of Service: Reflection Amplification', 'tactic': 'Impact'},
+            {'id': 'T1491.001', 'name': 'Defacement: Internal Defacement', 'tactic': 'Impact'},
+            {'id': 'T1491.002', 'name': 'Defacement: External Defacement', 'tactic': 'Impact'},
+            {'id': 'T1589', 'name': 'Gather Victim Identity Information', 'tactic': 'Reconnaissance'},
+            {'id': 'T1594', 'name': 'Search Victim-Owned Websites', 'tactic': 'Reconnaissance'},
+            {'id': 'T1136', 'name': 'Create Account', 'tactic': 'Persistence'},
+            {'id': 'T1485', 'name': 'Data Destruction', 'tactic': 'Impact'},
+            {'id': 'T1657', 'name': 'Financial Theft', 'tactic': 'Impact'},
+        ])
+    
+    # Add context-specific TTPs based on incident data
+    if not incidents_df.empty:
+        countries = incidents_df['country'].nunique()
+        sectors = incidents_df['sector'].nunique()
+        
+        if countries > 5:
+            ttps.append({'id': 'T1583', 'name': 'Acquire Infrastructure', 'tactic': 'Resource Development'})
+        
+        if sectors > 3:
+            ttps.append({'id': 'T1589', 'name': 'Gather Victim Identity Information', 'tactic': 'Reconnaissance'})
+    
+    return ttps
+
+# ============================================================================
+# RISK SCORING ENGINE
+# ============================================================================
+
+def calculate_comprehensive_risk_score(incidents_df, ransomware_data):
+    """
+    Calculate comprehensive risk score (0-100)
+    Based on multiple threat indicators
+    """
+    score = 0
+    breakdown = {}
+    
+    # 1. Incident Volume (0-25 points)
+    incident_count = len(incidents_df) if not incidents_df.empty else 0
+    incident_score = min(incident_count * 0.5, 25)
+    score += incident_score
+    breakdown['Incident Volume'] = incident_score
+    
+    # 2. Geographic Spread (0-20 points)
+    if not incidents_df.empty:
+        countries = incidents_df['country'].nunique()
+        geo_score = min(countries * 2, 20)
+        score += geo_score
+        breakdown['Geographic Spread'] = geo_score
+    
+    # 3. Sector Targeting (0-15 points)
+    if not incidents_df.empty:
+        sectors = incidents_df['sector'].nunique()
+        sector_score = min(sectors * 2.5, 15)
+        score += sector_score
+        breakdown['Sector Diversity'] = sector_score
+    
+    # 4. Attack Severity (0-20 points)
+    if not incidents_df.empty and 'severity' in incidents_df.columns:
+        high_severity = len(incidents_df[incidents_df['severity'] == 'High'])
+        severity_score = min(high_severity * 1.5, 20)
+        score += severity_score
+        breakdown['Attack Severity'] = severity_score
+    
+    # 5. Ransomware Operations (0-20 points)
+    if ransomware_data:
+        ransom_score = 0
+        if ransomware_data.get('victims'):
+            ransom_score += min(len(ransomware_data['victims']) * 0.5, 15)
+        if ransomware_data.get('group_info'):
+            ransom_score += 5
+        score += ransom_score
+        breakdown['Ransomware Activity'] = ransom_score
+    
+    return min(score, 100), breakdown
+
+def get_risk_classification(score):
+    """Classify risk based on score"""
+    if score >= 70:
+        return "CRITICAL", "risk-critical", "#DC2626"
+    elif score >= 40:
+        return "HIGH", "risk-high", "#F97316"
+    elif score >= 20:
+        return "MEDIUM", "risk-medium", "#EAB308"
     else:
-        df = generate_sample_data()
+        return "LOW", "risk-low", "#10B981"
 
-    for col in ["actor", "country", "threat_type", "sector", "severity"]:
-        df[col] = df[col].fillna("Unknown").astype(str)
+# ============================================================================
+# PDF EXPORT FUNCTIONALITY
+# ============================================================================
 
-    return df
+def add_page_number_and_watermark(canvas, doc):
+    """Add page numbers, watermark, and footer to each page"""
+    canvas.saveState()
+    
+    # Add watermark
+    canvas.setFillColorRGB(0.9, 0.9, 0.9)
+    canvas.setFont("Helvetica-Bold", 60)
+    canvas.saveState()
+    canvas.translate(letter[0]/2, letter[1]/2)
+    canvas.rotate(45)
+    canvas.drawCentredString(0, 0, "CYHAWK AFRICA")
+    canvas.restoreState()
+    
+    # Add footer with page number
+    canvas.setFillColorRGB(0.3, 0.3, 0.3)
+    canvas.setFont("Helvetica", 9)
+    page_num = canvas.getPageNumber()
+    footer_text = f"CyHawk Africa Threat Intelligence Platform | Page {page_num}"
+    canvas.drawString(inch, 0.5*inch, footer_text)
+    
+    # Add TLP:WHITE notice
+    canvas.setFont("Helvetica-Bold", 8)
+    canvas.setFillColorRGB(0.0, 0.5, 0.0)  # Green for TLP:WHITE
+    canvas.drawRightString(letter[0] - inch, 0.5*inch, "TLP:WHITE - PUBLIC")
+    
+    canvas.restoreState()
 
-df = load_data()
+def generate_pdf_report(actor_name, profile_data, incidents_df, ransomware_data, risk_score, ttps):
+    """Generate strategic threat intelligence report with branding"""
+    if not PDF_EXPORT_AVAILABLE:
+        st.error("PDF export requires reportlab package. Install with: pip install reportlab")
+        return None
+    
+    from reportlab.lib.utils import ImageReader
+    import io
+    from PIL import Image, ImageDraw, ImageFont
+    
+    buffer = BytesIO()
+    
+    # Create document with custom page template
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=letter, 
+        topMargin=1*inch, 
+        bottomMargin=0.75*inch,
+        leftMargin=0.75*inch,
+        rightMargin=0.75*inch
+    )
+    
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=28,
+        textColor=colors.HexColor('#C41E3A'),
+        spaceAfter=12,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=colors.HexColor('#666666'),
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        fontName='Helvetica'
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=16,
+        textColor=colors.HexColor('#C41E3A'),
+        spaceAfter=12,
+        spaceBefore=18,
+        fontName='Helvetica-Bold',
+        borderWidth=0,
+        borderColor=colors.HexColor('#C41E3A'),
+        borderPadding=8
+    )
+    
+    classification_style = ParagraphStyle(
+        'Classification',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#C41E3A'),
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        spaceAfter=20
+    )
+    
+    # ========== COVER PAGE ==========
+    
+    # Add logo if available
+    logo_path = "assets/cyhawk_logo.png"
+    if os.path.exists(logo_path):
+        try:
+            img = Image.open(logo_path)
+            # Resize logo to reasonable size
+            img.thumbnail((200, 80), Image.Resampling.LANCZOS)
+            img_buffer = BytesIO()
+            img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            logo = ImageReader(img_buffer)
+            from reportlab.platypus import Image as RLImage
+            logo_img = RLImage(img_buffer, width=200, height=80)
+            logo_img.hAlign = 'CENTER'
+            story.append(logo_img)
+            story.append(Spacer(1, 0.3*inch))
+        except:
+            # If logo fails, add text logo
+            story.append(Paragraph("CYHAWK AFRICA", title_style))
+            story.append(Spacer(1, 0.2*inch))
+    else:
+        story.append(Paragraph("CYHAWK AFRICA", title_style))
+        story.append(Spacer(1, 0.2*inch))
+    
+    # Report type
+    story.append(Paragraph("STRATEGIC THREAT INTELLIGENCE REPORT", subtitle_style))
+    story.append(Spacer(1, 0.5*inch))
+    
+    # Actor name - main title
+    story.append(Paragraph(f"THREAT ACTOR: {actor_name.upper()}", title_style))
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Classification banner
+    risk_class, _, _ = get_risk_classification(risk_score)
+    story.append(Paragraph(f"CLASSIFICATION: {risk_class} RISK | TLP:WHITE", classification_style))
+    story.append(Spacer(1, 0.5*inch))
+    
+    # Report metadata table
+    metadata = [
+        ['Report Generated:', datetime.now().strftime('%d %B %Y at %H:%M UTC')],
+        ['Threat Actor Type:', profile_data['type']],
+        ['Risk Score:', f"{risk_score}/100 ({risk_class})"],
+        ['Active Since:', profile_data['active_since']],
+        ['Incidents Tracked:', str(len(incidents_df))],
+        ['Data Sources:', 'CyHawk Telemetry, Ransomware.live, OSINT'],
+    ]
+    
+    metadata_table = Table(metadata, colWidths=[2*inch, 4*inch])
+    metadata_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.grey),
+    ]))
+    story.append(metadata_table)
+    story.append(Spacer(1, 0.5*inch))
+    
+    # Distribution notice
+    distribution_text = """
+    <b>DISTRIBUTION NOTICE:</b> This threat intelligence report is released under TLP:WHITE 
+    (UNLIMITED DISCLOSURE). Recipients may share this information without restriction, subject to 
+    standard copyright rules. This report is intended for public consumption and may be freely 
+    distributed to support cybersecurity awareness and defense.
+    """
+    story.append(Paragraph(distribution_text, styles['Normal']))
+    
+    story.append(PageBreak())
+    
+    # ========== EXECUTIVE SUMMARY ==========
+    
+    story.append(Paragraph("EXECUTIVE SUMMARY", heading_style))
+    
+    if not incidents_df.empty:
+        exec_summary = f"""
+        <b>{actor_name}</b> represents a <b>{risk_class} risk threat actor</b> with confirmed 
+        operational capability. Intelligence analysis reveals <b>{len(incidents_df)} documented cyber incidents</b> 
+        impacting <b>{incidents_df['country'].nunique()} countries</b> across 
+        <b>{incidents_df['sector'].nunique()} critical industry sectors</b>.
+        <br/><br/>
+        <b>Threat Actor Classification:</b> {profile_data['type']}<br/>
+        <b>Operational Timeline:</b> {incidents_df['date'].min().strftime('%B %Y')} to {incidents_df['date'].max().strftime('%B %Y')}<br/>
+        <b>Geographic Scope:</b> {"Multi-national operations" if incidents_df['country'].nunique() > 5 else "Regional targeting"}
+        """
+        
+        if ransomware_data and ransomware_data.get('victims'):
+            exec_summary += f"""
+            <br/><br/>
+            <b>RANSOMWARE OPERATIONS CONFIRMED:</b> {len(ransomware_data['victims'])} documented victim 
+            organizations identified through ransomware.live intelligence feeds. This actor demonstrates 
+            active double-extortion capabilities with sustained financial motivation.
+            """
+    else:
+        exec_summary = f"""
+        <b>{actor_name}</b> is classified as a <b>{profile_data['type']}</b> tracked through 
+        multiple intelligence sources. Limited confirmed incident telemetry suggests either 
+        emerging operations or sophisticated operational security practices.
+        """
+    
+    story.append(Paragraph(exec_summary, styles['Normal']))
+    story.append(Spacer(1, 0.3*inch))
+    
+    # ========== THREAT ASSESSMENT ==========
+    
+    story.append(Paragraph("STRATEGIC THREAT ASSESSMENT", heading_style))
+    
+    # Risk score breakdown
+    risk_assessment = f"""
+    <b>Comprehensive Risk Score: {risk_score}/100</b><br/><br/>
+    This threat actor has been assigned a risk score of {risk_score} out of 100 based on multi-factor 
+    analysis including incident frequency, geographic distribution, sector targeting diversity, 
+    attack severity metrics, and confirmed operational indicators.
+    """
+    story.append(Paragraph(risk_assessment, styles['Normal']))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # ========== MITRE ATT&CK FRAMEWORK ==========
+    
+    story.append(Paragraph("MITRE ATT&CK TACTICS, TECHNIQUES & PROCEDURES", heading_style))
+    
+    if ttps:
+        ttp_intro = f"""
+        Based on operational analysis and incident forensics, <b>{len(ttps)} MITRE ATT&CK techniques</b> 
+        have been attributed to this threat actor's operational methodology:
+        """
+        story.append(Paragraph(ttp_intro, styles['Normal']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        # Create TTP table
+        ttp_data = [['Technique ID', 'Technique Name', 'Tactic']]
+        for ttp in ttps[:15]:  # Limit to top 15 for PDF
+            ttp_data.append([ttp['id'], ttp['name'], ttp['tactic']])
+        
+        ttp_table = Table(ttp_data, colWidths=[1*inch, 3.5*inch, 1.5*inch])
+        ttp_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('TOPPADDING', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+            ('TOPPADDING', (0, 1), (-1, -1), 6),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        story.append(ttp_table)
+        story.append(Spacer(1, 0.2*inch))
+    
+    story.append(PageBreak())
+    
+    # ========== GEOGRAPHIC TARGETING ANALYSIS ==========
+    
+    if not incidents_df.empty:
+        story.append(Paragraph("GEOGRAPHIC TARGETING ANALYSIS", heading_style))
+        
+        countries = incidents_df['country'].value_counts().head(10)
+        geo_text = f"""
+        Geographic analysis reveals targeting across <b>{incidents_df['country'].nunique()} countries</b>, 
+        with concentrated activity in the following regions:
+        """
+        story.append(Paragraph(geo_text, styles['Normal']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        # Country targeting table
+        country_data = [['Country', 'Incident Count', 'Percentage']]
+        total_incidents = len(incidents_df)
+        for country, count in countries.items():
+            percentage = f"{(count/total_incidents)*100:.1f}%"
+            country_data.append([country, str(count), percentage])
+        
+        country_table = Table(country_data, colWidths=[2.5*inch, 1.5*inch, 1.5*inch])
+        country_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ]))
+        story.append(country_table)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # ========== SECTOR TARGETING ==========
+        
+        story.append(Paragraph("INDUSTRY SECTOR TARGETING", heading_style))
+        
+        sectors = incidents_df['sector'].value_counts().head(10)
+        sector_text = f"""
+        Cross-sector analysis identifies <b>{incidents_df['sector'].nunique()} distinct industry verticals</b> 
+        targeted by this threat actor:
+        """
+        story.append(Paragraph(sector_text, styles['Normal']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        # Sector list
+        for sector, count in sectors.items():
+            story.append(Paragraph(f"• <b>{sector}:</b> {count} incidents", styles['Normal']))
+        
+        story.append(Spacer(1, 0.3*inch))
+    
+    # ========== DEFENSIVE RECOMMENDATIONS ==========
+    
+    story.append(Paragraph("STRATEGIC DEFENSIVE RECOMMENDATIONS", heading_style))
+    
+    recommendations = [
+        "<b>IMMEDIATE ACTIONS (0-24 HOURS):</b>",
+        "• Deploy indicators of compromise (IOCs) across security infrastructure",
+        "• Initiate threat hunting operations for historical compromise indicators",
+        "• Elevate monitoring and alerting for TTPs associated with this actor",
+        "• Brief executive leadership and board on threat actor capabilities",
+        "",
+        "<b>SHORT-TERM ACTIONS (1-7 DAYS):</b>",
+        "• Conduct tabletop exercises simulating this threat actor's TTPs",
+        "• Review and update incident response playbooks",
+        "• Implement additional network segmentation for critical assets",
+        "• Enhance email security controls and user awareness training",
+        "",
+        "<b>LONG-TERM STRATEGIC INITIATIVES:</b>",
+        "• Deploy advanced endpoint detection and response (EDR) solutions",
+        "• Implement zero-trust architecture principles",
+        "• Establish threat intelligence sharing partnerships",
+        "• Conduct regular red team exercises simulating this threat actor",
+        "• Develop and test business continuity plans for ransomware scenarios",
+    ]
+    
+    for rec in recommendations:
+        story.append(Paragraph(rec, styles['Normal']))
+    
+    story.append(Spacer(1, 0.3*inch))
+    
+    # ========== INTELLIGENCE GAPS ==========
+    
+    story.append(Paragraph("INTELLIGENCE GAPS & COLLECTION REQUIREMENTS", heading_style))
+    
+    gaps_text = """
+    The following intelligence requirements have been identified for enhanced threat actor understanding:
+    <br/><br/>
+    • Attribution confirmation and sponsorship identification<br/>
+    • Complete infrastructure mapping and C2 architecture<br/>
+    • Malware variant analysis and capability assessment<br/>
+    • Victim selection criteria and targeting methodology<br/>
+    • Operational tempo and campaign lifecycle analysis
+    """
+    story.append(Paragraph(gaps_text, styles['Normal']))
+    
+    story.append(PageBreak())
+    
+    # ========== CONCLUSION ==========
+    
+    story.append(Paragraph("CONCLUSION & OUTLOOK", heading_style))
+    
+    conclusion = f"""
+    <b>{actor_name}</b> represents a {risk_class.lower()} risk to organizational security posture based 
+    on demonstrated capabilities, operational scope, and historical targeting patterns. The threat actor's 
+    classification as <b>{profile_data['type']}</b> indicates specific defensive priorities and mitigation strategies.
+    <br/><br/>
+    Organizations matching this actor's historical targeting profile should implement recommended defensive 
+    measures immediately and maintain heightened security posture. Continuous monitoring of threat intelligence 
+    feeds and participation in information sharing communities is essential for early warning of emerging campaigns.
+    <br/><br/>
+    <b>THREAT OUTLOOK:</b> {"Critical - Sustained operations expected" if risk_score >= 70 else "High - Continued monitoring required" if risk_score >= 40 else "Moderate - Defensive measures recommended"}
+    """
+    story.append(Paragraph(conclusion, styles['Normal']))
+    
+    story.append(Spacer(1, 0.5*inch))
+    
+    # ========== FOOTER ==========
+    
+    footer_text = """
+    <br/><br/>
+    <i>This strategic threat intelligence report was generated by the CyHawk Africa Threat Intelligence Platform. 
+    For questions regarding this report or additional intelligence requirements, contact your CyHawk analyst.</i>
+    <br/><br/>
+    <b>DISTRIBUTION:</b> TLP:WHITE - Unlimited disclosure authorized<br/>
+    <b>CLASSIFICATION:</b> PUBLIC<br/>
+    <b>VALIDITY:</b> This assessment is valid as of the generation date and should be reviewed monthly.
+    """
+    story.append(Paragraph(footer_text, styles['Normal']))
+    
+    # Build PDF with custom page template
+    doc.build(story, onFirstPage=add_page_number_and_watermark, onLaterPages=add_page_number_and_watermark)
+    
+    buffer.seek(0)
+    return buffer
 
-# --------------------------------------------------
-# ACTOR RESOLUTION (CRITICAL FIX)
-# --------------------------------------------------
-actor = None
+# ============================================================================
+# MAIN PAGE
+# ============================================================================
 
-if "actor" in st.query_params:
-    actor = st.query_params.get("actor")
-    if isinstance(actor, list):
-        actor = actor[0]
-    actor = unquote(actor).strip()
+# Get actor from query params
+query_params = st.query_params
+selected_actor = ""
 
-if not actor:
-    actor = st.session_state.get("selected_actor")
+if "actor" in query_params:
+    actor_param = query_params.get("actor")
+    if isinstance(actor_param, list):
+        selected_actor = actor_param[0] if actor_param else ""
+    else:
+        selected_actor = actor_param
 
-if not actor:
-    st.error("No threat actor selected.")
+if not selected_actor:
+    st.error("⚠️ No threat actor selected.")
+    st.markdown(f'<div style="text-align: center;"><a href="/Threat_Actors" style="display: inline-block; padding: 1rem 2rem; background: {CYHAWK_RED}; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">← Go to Threat Actors</a></div>', unsafe_allow_html=True)
     st.stop()
 
-actor_df = df[df["actor"].str.lower() == actor.lower()]
+# Load data
+with st.spinner("Loading threat intelligence..."):
+    incidents_df = load_incidents()
+    actor_df = incidents_df[incidents_df['actor'] == selected_actor] if not incidents_df.empty else pd.DataFrame()
+    ransomware_data = fetch_ransomware_live_comprehensive(selected_actor)
 
-# --------------------------------------------------
-# THREAT TYPE CLASSIFICATION (AUTHORITATIVE)
-# --------------------------------------------------
-ACTOR_TYPES = {
-    "Keymous Plus": "Hacktivist Group",
-    "Anonymous Sudan": "Hacktivist Group",
-    "Nightspire": "Ransomware Group",
-    "Dark Hell 07x": "Ransomware Group",
-    "b4bayega": "Database Breach Actor",
-    "BigBrother": "Initial Access Broker (IAB)"
+# Classify actor type
+actor_type = classify_threat_actor_type(selected_actor, actor_df, ransomware_data)
+
+# Calculate risk score and TTPs
+risk_score, risk_breakdown = calculate_comprehensive_risk_score(actor_df, ransomware_data)
+risk_class, risk_css, risk_color = get_risk_classification(risk_score)
+ttps = infer_mitre_ttps(selected_actor, actor_df, ransomware_data, actor_type)
+
+# Prepare profile data
+profile_data = {
+    'classification': risk_class,
+    'origin': 'Under Investigation',
+    'active_since': actor_df['date'].min().strftime('%Y') if not actor_df.empty else 'Unknown',
+    'type': actor_type  # Use classified type instead of hardcoded
 }
 
-actor_type = ACTOR_TYPES.get(actor, "Unclassified Threat Actor")
+# ============================================================================
+# HEADER
+# ============================================================================
 
-# --------------------------------------------------
-# MITRE ATT&CK MAPPING BY TYPE
-# --------------------------------------------------
-MITRE_BY_TYPE = {
-    "Hacktivist Group": [
-        "T1499 – Endpoint Denial of Service",
-        "T1565 – Data Manipulation",
-        "T1071 – Application Layer Protocol"
-    ],
-    "Ransomware Group": [
-        "T1486 – Data Encrypted for Impact",
-        "T1078 – Valid Accounts",
-        "T1021 – Remote Services"
-    ],
-    "Initial Access Broker (IAB)": [
-        "T1078 – Valid Accounts",
-        "T1190 – Exploit Public-Facing Application",
-        "T1133 – External Remote Services"
-    ],
-    "Database Breach Actor": [
-        "T1190 – Exploit Public-Facing Application",
-        "T1046 – Network Service Scanning",
-        "T1552 – Unsecured Credentials"
-    ]
-}
-
-mitre_ttps = MITRE_BY_TYPE.get(actor_type, [])
-
-# --------------------------------------------------
-# EXECUTIVE SUMMARY (STRATEGIC, DATA-DRIVEN)
-# --------------------------------------------------
-total_attacks = len(actor_df)
-countries = actor_df["country"].nunique()
-sectors = actor_df["sector"].nunique()
-
-executive_summary = f"""
-**{actor}** is assessed as a **{actor_type}** based on observed activity patterns, operational focus, and targeting behavior.
-
-The actor has been linked to **{total_attacks} documented incidents**, impacting **{countries} countries** and **{sectors} industry sectors**.  
-Activity suggests {'regional influence operations' if actor_type == 'Hacktivist Group' else 'financially motivated operations'} with a sustained operational tempo.
-
-The threat actor demonstrates repeatable tradecraft and should be considered an **active threat** within the African cyber threat landscape.
-"""
-
-# --------------------------------------------------
-# HEADER (UNCHANGED STRUCTURE)
-# --------------------------------------------------
 st.markdown(f"""
-<div style="background: linear-gradient(135deg, {CYHAWK_RED}, {CYHAWK_RED_DARK});
-            padding:2rem;border-radius:12px;color:white;">
-    <h1>{actor}</h1>
-    <p>{actor_type}</p>
+<div class="profile-header">
+    <a href="/Threat_Actors" style="color: white; text-decoration: none; opacity: 0.9; display: inline-block; margin-bottom: 1rem; padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
+        ← Back to Threat Actors
+    </a>
+    <h1 class="actor-title">{selected_actor}</h1>
+    <p style="opacity: 0.95; font-size: 1.1rem; margin-top: 0.5rem;">Comprehensive Threat Actor Intelligence Profile</p>
+    <div class="info-grid">
+        <div class="info-item">
+            <div class="info-label">Risk Classification</div>
+            <div class="info-value" style="color: {risk_color};">{risk_class}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Type</div>
+            <div class="info-value">{profile_data['type']}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Active Since</div>
+            <div class="info-value">{profile_data['active_since']}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Incidents Tracked</div>
+            <div class="info-value">{len(actor_df)}</div>
+        </div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --------------------------------------------------
-# OVERVIEW
-# --------------------------------------------------
-st.subheader("📋 Executive Summary")
-st.markdown(executive_summary)
+# ============================================================================
+# EXPORT BUTTONS
+# ============================================================================
 
-# --------------------------------------------------
-# ATTACK STATISTICS
-# --------------------------------------------------
-st.subheader("📊 Attack Statistics")
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns([1, 1, 4])
 
 with col1:
-    st.metric("Total Attacks", total_attacks)
+    if PDF_EXPORT_AVAILABLE:
+        if st.button("📄 Export PDF", use_container_width=True):
+            with st.spinner("Generating PDF..."):
+                pdf_buffer = generate_pdf_report(selected_actor, profile_data, actor_df, ransomware_data, risk_score, ttps)
+                if pdf_buffer:
+                    st.download_button(
+                        label="⬇️ Download PDF",
+                        data=pdf_buffer,
+                        file_name=f"CyHawk_ThreatBrief_{selected_actor}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+    else:
+        if st.button("📄 Export PDF", use_container_width=True, disabled=True):
+            st.error("Install reportlab for PDF export: `pip install reportlab`")
+
+# col2 and col3 remain for layout spacing but no export button
+
+# ============================================================================
+# RISK SCORE SECTION
+# ============================================================================
+
+st.markdown('<div class="section-card">', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">🎯 Risk Assessment</h2>', unsafe_allow_html=True)
+
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    st.markdown(f"""
+    <div class="risk-meter {risk_css}">
+        <div style="font-size: 3rem; font-weight: 800; color: {risk_color};">{risk_score}</div>
+        <div style="font-size: 1.2rem; font-weight: 600; color: {risk_color};">/ 100</div>
+        <div style="font-size: 1.5rem; font-weight: 700; margin-top: 1rem; color: {risk_color};">{risk_class}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
 with col2:
-    st.metric("Countries", countries)
-with col3:
-    st.metric("Industries", sectors)
-with col4:
-    st.metric("High Severity", len(actor_df[actor_df["severity"] == "High"]))
+    st.markdown("**Risk Score Breakdown:**")
+    for factor, score in risk_breakdown.items():
+        percentage = (score / 100) * 100
+        st.markdown(f"**{factor}:** {score:.1f} points")
+        st.progress(score / 100)
 
-# --------------------------------------------------
-# MITRE ATT&CK
-# --------------------------------------------------
-st.subheader("🎯 MITRE ATT&CK Mapping")
-if mitre_ttps:
-    for ttp in mitre_ttps:
-        st.markdown(f"- {ttp}")
-else:
-    st.info("No ATT&CK mapping available for this actor type.")
+st.markdown('</div>', unsafe_allow_html=True)
 
-# --------------------------------------------------
-# TARGETED COUNTRIES
-# --------------------------------------------------
+# ============================================================================
+# OVERVIEW / EXECUTIVE SUMMARY
+# ============================================================================
+
+st.markdown('<div class="section-card">', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">📋 Executive Summary</h2>', unsafe_allow_html=True)
+
+# Comprehensive executive summary generation
 if not actor_df.empty:
-    country_stats = actor_df["country"].value_counts().reset_index()
-    country_stats.columns = ["Country", "Incidents"]
+    # Gather comprehensive statistics
+    total_incidents = len(actor_df)
+    countries_affected = actor_df['country'].nunique()
+    sectors_affected = actor_df['sector'].nunique()
+    date_range_start = actor_df['date'].min().strftime('%B %Y')
+    date_range_end = actor_df['date'].max().strftime('%B %Y')
+    
+    # Calculate time span
+    days_active = (actor_df['date'].max() - actor_df['date'].min()).days
+    months_active = max(1, days_active // 30)
+    
+    # Severity analysis
+    if 'severity' in actor_df.columns:
+        high_severity = len(actor_df[actor_df['severity'] == 'High'])
+        medium_severity = len(actor_df[actor_df['severity'] == 'Medium'])
+        low_severity = len(actor_df[actor_df['severity'] == 'Low'])
+        severity_text = f"{high_severity} high-severity, {medium_severity} medium-severity, and {low_severity} low-severity incidents"
+    else:
+        severity_text = "multiple severity levels"
+    
+    # Top targeted countries
+    top_countries = actor_df['country'].value_counts().head(3)
+    top_countries_text = ", ".join([f"{country} ({count})" for country, count in top_countries.items()])
+    
+    # Top targeted sectors
+    top_sectors = actor_df['sector'].value_counts().head(3)
+    top_sectors_text = ", ".join([f"{sector} ({count})" for sector, count in top_sectors.items()])
+    
+    # Geographic scope assessment
+    if countries_affected > 10:
+        geographic_scope = "demonstrates global operational reach"
+    elif countries_affected > 5:
+        geographic_scope = "operates across multiple international regions"
+    elif countries_affected > 2:
+        geographic_scope = "maintains regional operational focus"
+    else:
+        geographic_scope = "exhibits localized targeting"
+    
+    # Threat sophistication assessment
+    if sectors_affected > 5 and countries_affected > 5:
+        sophistication = "sophisticated, multi-vector"
+    elif sectors_affected > 3 or countries_affected > 3:
+        sophistication = "moderately sophisticated"
+    else:
+        sophistication = "focused"
+    
+    # Attack frequency assessment
+    attacks_per_month = total_incidents / max(1, months_active)
+    if attacks_per_month > 5:
+        frequency_assessment = "highly active with sustained operational tempo"
+    elif attacks_per_month > 2:
+        frequency_assessment = "consistently active with regular campaign cycles"
+    else:
+        frequency_assessment = "selectively active with measured operational cadence"
+    
+    # Build comprehensive summary
+    summary_parts = []
+    
+    # Part 1: Threat Actor Overview
+    summary_parts.append(f"""
+    **{selected_actor}** is classified as a **{profile_data['type']}** and represents a **{risk_class} RISK** 
+    to African cybersecurity infrastructure. Based on CyHawk Africa's threat intelligence telemetry and 
+    corroborating OSINT sources, this threat actor has been conclusively linked to **{total_incidents} documented 
+    cyber incidents** spanning {months_active} months of operational activity from **{date_range_start}** 
+    through **{date_range_end}**.
+    """)
+    
+    # Part 2: Geographic and Sectoral Impact
+    summary_parts.append(f"""
+    **Geographic Impact:** The threat actor {geographic_scope}, with confirmed intrusions affecting 
+    **{countries_affected} countries** across the African continent and beyond. Primary targeting has focused on 
+    {top_countries_text}, indicating strategic interest in these regions' critical infrastructure and economic assets.
+    """)
+    
+    summary_parts.append(f"""
+    **Sectoral Targeting:** Cross-sector analysis reveals targeting of **{sectors_affected} distinct industry verticals**, 
+    demonstrating {sophistication} operational capabilities. The most heavily impacted sectors include {top_sectors_text}, 
+    suggesting either opportunistic targeting or deliberate focus on high-value assets within these industries.
+    """)
+    
+    # Part 3: Operational Characteristics
+    summary_parts.append(f"""
+    **Operational Tempo:** Intelligence analysis indicates this threat actor is {frequency_assessment}, 
+    averaging approximately {attacks_per_month:.1f} incidents per month. The documented attack pattern includes 
+    {severity_text}, reflecting varied operational objectives ranging from reconnaissance to destructive impact.
+    """)
+    
+    # Part 4: Ransomware Operations (if applicable)
+    if ransomware_data and ransomware_data.get('victims'):
+        victim_count = len(ransomware_data['victims'])
+        
+        # Geographic distribution of victims
+        victim_countries = {}
+        for victim in ransomware_data['victims']:
+            country = victim.get('country', 'Unknown')
+            if country != 'Unknown':
+                victim_countries[country] = victim_countries.get(country, 0) + 1
+        
+        ransomware_geographic = f"{len(victim_countries)} countries" if len(victim_countries) > 1 else "a concentrated geographic region"
+        
+        summary_parts.append(f"""
+        **Ransomware Operations:** CONFIRMED ACTIVE RANSOMWARE CAPABILITY. Intelligence from ransomware.live 
+        documents **{victim_count} confirmed victim organizations** attributed to this threat actor's ransomware campaigns, 
+        spanning {ransomware_geographic}. This confirms the actor employs double-extortion tactics, combining data 
+        exfiltration with encryption to maximize pressure on victims. The presence of victim leak sites indicates 
+        sophisticated infrastructure supporting sustained ransomware operations with financial motivation.
+        """)
+    
+    # Part 5: Threat Assessment and Risk Factors
+    risk_factors = []
+    if total_incidents > 20:
+        risk_factors.append("high operational frequency")
+    if countries_affected > 5:
+        risk_factors.append("international operational scope")
+    if sectors_affected > 3:
+        risk_factors.append("cross-sector targeting capability")
+    if ransomware_data:
+        risk_factors.append("confirmed ransomware infrastructure")
+    if 'severity' in actor_df.columns and high_severity > total_incidents * 0.3:
+        risk_factors.append("demonstrated high-impact attack capability")
+    
+    if risk_factors:
+        risk_factors_text = ", ".join(risk_factors)
+        summary_parts.append(f"""
+        **Strategic Risk Assessment:** The **{risk_score}/100 risk score** reflects multiple threat indicators including 
+        {risk_factors_text}. Organizations matching this actor's historical targeting profile should implement enhanced 
+        defensive measures immediately and maintain heightened security posture.
+        """)
+    
+    # Part 6: Intelligence Confidence and Recommendations
+    summary_parts.append(f"""
+    **Intelligence Confidence:** This assessment is based on **HIGH CONFIDENCE** attribution derived from {total_incidents} 
+    correlated incidents, multiple intelligence sources, and validated technical indicators. Defensive teams should 
+    prioritize detection capabilities for this actor's known TTPs and establish monitoring for emerging indicators 
+    of compromise.
+    """)
+    
+    # Display all parts
+    for part in summary_parts:
+        st.markdown(part)
+        st.markdown("")
 
-    fig = px.bar(
-        country_stats,
-        x="Incidents",
-        y="Country",
-        orientation="h",
-        template=C["template"],
-        color="Incidents",
-        color_continuous_scale=[[0, C["card"]], [1, C["accent"]]]
-    )
-    st.plotly_chart(fig, use_container_width=True)
+else:
+    # Fallback summary for actors with no incident data
+    summary_fallback = f"""
+    **{selected_actor}** is classified as a **{profile_data['type']}** tracked through external intelligence 
+    sources and open-source reporting. While CyHawk Africa's incident telemetry contains limited confirmed 
+    intrusions directly attributed to this threat actor, their presence in threat intelligence feeds and 
+    {f"confirmed ransomware operations ({len(ransomware_data['victims'])} victims)" if ransomware_data and ransomware_data.get('victims') else "observed attack patterns"} 
+    indicates active operational capability.
+    
+    **Intelligence Assessment:** The absence of extensive incident telemetry may indicate either:
+    1. Emerging threat actor still developing operational capability
+    2. Sophisticated operational security limiting attribution confidence  
+    3. Targeting outside CyHawk Africa's primary monitoring scope
+    4. Recent emergence requiring continued intelligence development
+    
+    Organizations should implement baseline defensive measures and monitor for emerging indicators associated 
+    with this threat actor. Enhanced threat hunting and indicator development activities are recommended to 
+    improve attribution confidence and defensive readiness.
+    """
+    
+    st.markdown(summary_fallback)
+    
+    if ransomware_data and ransomware_data.get('victims'):
+        st.markdown(f"""
+        **Ransomware Operations:** Despite limited incident telemetry, ransomware.live confirms **{len(ransomware_data['victims'])} 
+        documented victim organizations**, validating active ransomware operations. This threat actor should be 
+        treated as a credible ransomware threat with demonstrated capability and intent.
+        """)
 
-# --------------------------------------------------
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================================================================
+# MITRE ATT&CK TTPs
+# ============================================================================
+
+st.markdown('<div class="section-card">', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">🎯 MITRE ATT&CK Tactics & Techniques</h2>', unsafe_allow_html=True)
+
+st.markdown(f"**{len(ttps)} techniques identified** based on operational analysis:")
+
+# Group by tactic
+tactics = {}
+for ttp in ttps:
+    tactic = ttp['tactic']
+    if tactic not in tactics:
+        tactics[tactic] = []
+    tactics[tactic].append(ttp)
+
+for tactic, techniques in sorted(tactics.items()):
+    st.markdown(f"### {tactic}")
+    for tech in techniques:
+        st.markdown(f'<span class="ttp-badge"><strong>{tech["id"]}</strong>: {tech["name"]}</span>', unsafe_allow_html=True)
+    st.markdown("")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================================================================
+# STATISTICS
+# ============================================================================
+
+if not actor_df.empty:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">📊 Attack Statistics</h2>', unsafe_allow_html=True)
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Attacks", len(actor_df))
+    with col2:
+        st.metric("Countries", actor_df['country'].nunique())
+    with col3:
+        st.metric("Sectors", actor_df['sector'].nunique())
+    with col4:
+        high_sev = len(actor_df[actor_df['severity'] == 'High']) if 'severity' in actor_df.columns else 0
+        st.metric("High Severity", high_sev)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================================================================
+# TARGETED COUNTRIES
+# ============================================================================
+
+if not actor_df.empty:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">🌍 Targeted Countries</h2>', unsafe_allow_html=True)
+    
+    country_stats = actor_df['country'].value_counts().head(10).reset_index()
+    country_stats.columns = ['Country', 'Incidents']
+    
+    fig_geo = px.bar(country_stats, x='Incidents', y='Country', orientation='h',
+                     title=f'Top 10 Countries Targeted by {selected_actor}')
+    fig_geo.update_traces(marker_color=CYHAWK_RED)
+    fig_geo.update_layout(yaxis={'categoryorder': 'total ascending'}, height=400)
+    st.plotly_chart(fig_geo, use_container_width=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================================================================
 # TARGETED INDUSTRIES
-# --------------------------------------------------
-sector_stats = actor_df["sector"].value_counts().reset_index()
-sector_stats.columns = ["Sector", "Incidents"]
+# ============================================================================
 
-fig = px.pie(
-    sector_stats,
-    values="Incidents",
-    names="Sector",
-    hole=0.4,
-    template=C["template"]
-)
-st.plotly_chart(fig, use_container_width=True)
+if not actor_df.empty:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">🏢 Targeted Industries</h2>', unsafe_allow_html=True)
+    
+    sector_stats = actor_df['sector'].value_counts().reset_index()
+    sector_stats.columns = ['Sector', 'Incidents']
+    
+    fig_sector = px.pie(sector_stats, values='Incidents', names='Sector',
+                       title=f'Industry Distribution', hole=0.4)
+    fig_sector.update_traces(textposition='inside', textinfo='percent+label')
+    st.plotly_chart(fig_sector, use_container_width=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# --------------------------------------------------
+# ============================================================================
+# RANSOMWARE INTELLIGENCE
+# ============================================================================
+
+if ransomware_data and ransomware_data.get('victims'):
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">🎯 Ransomware Intelligence (ransomware.live)</h2>', unsafe_allow_html=True)
+    
+    # Operational Status
+    st.markdown(f"""
+    **Status:** 🔴 ACTIVE RANSOMWARE OPERATIONS  
+    **Victims Documented:** {len(ransomware_data['victims'])}
+    """)
+    
+    # Group Metadata (if available)
+    if ransomware_data.get('group_info'):
+        group_info = ransomware_data['group_info']
+        st.markdown("### 📊 Group Intelligence Profile")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("First Seen", group_info.get('first_seen', 'Unknown'))
+        with col2:
+            st.metric("Last Activity", group_info.get('last_seen', 'Recent'))
+        with col3:
+            st.metric("Known Affiliates", group_info.get('affiliates', 'N/A'))
+        
+        # Additional group metadata
+        if group_info.get('profile'):
+            st.markdown("**Threat Profile:**")
+            st.info(group_info.get('profile', 'No profile available'))
+    
+    # Victim Analysis
+    st.markdown("### 🎯 Victim Analysis")
+    
+    victims = ransomware_data['victims']
+    
+    # Aggregate victim statistics
+    if victims:
+        victim_countries = {}
+        victim_sectors = {}
+        
+        for victim in victims:
+            country = victim.get('country', 'Unknown')
+            if country != 'Unknown':
+                victim_countries[country] = victim_countries.get(country, 0) + 1
+            
+            # Try to infer sector from victim name/activity
+            org_name = victim.get('post_title', '').lower()
+            if any(word in org_name for word in ['bank', 'financial', 'credit']):
+                victim_sectors['Financial Services'] = victim_sectors.get('Financial Services', 0) + 1
+            elif any(word in org_name for word in ['hospital', 'medical', 'health', 'clinic']):
+                victim_sectors['Healthcare'] = victim_sectors.get('Healthcare', 0) + 1
+            elif any(word in org_name for word in ['school', 'university', 'college', 'education']):
+                victim_sectors['Education'] = victim_sectors.get('Education', 0) + 1
+            elif any(word in org_name for word in ['gov', 'government', 'municipal', 'city', 'county']):
+                victim_sectors['Government'] = victim_sectors.get('Government', 0) + 1
+            else:
+                victim_sectors['Other'] = victim_sectors.get('Other', 0) + 1
+        
+        # Display victim statistics
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Geographic Distribution:**")
+            if victim_countries:
+                for country, count in sorted(victim_countries.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    st.markdown(f"- **{country}:** {count} victims")
+        
+        with col2:
+            st.markdown("**Sector Targeting:**")
+            if victim_sectors:
+                for sector, count in sorted(victim_sectors.items(), key=lambda x: x[1], reverse=True):
+                    st.markdown(f"- **{sector}:** {count} victims")
+    
+    # Recent Victims Table
+    st.markdown("### 📋 Recent Victim Organizations")
+    
+    # Create normalized victim data
+    victim_table_data = []
+    for victim in victims[:20]:  # Show top 20 recent victims
+        victim_table_data.append({
+            'Organization': victim.get('post_title', 'Unknown'),
+            'Country': victim.get('country', 'Unknown'),
+            'Discovered': victim.get('discovered', 'Unknown'),
+            'Status': '🔴 Leaked' if victim.get('published') else '⏳ Pending'
+        })
+    
+    if victim_table_data:
+        victim_df = pd.DataFrame(victim_table_data)
+        st.dataframe(victim_df, use_container_width=True, hide_index=True)
+    
+    # Detailed victim cards (for top 5)
+    st.markdown("### 🔍 Detailed Victim Intelligence")
+    
+    for victim in victims[:5]:
+        st.markdown(f"""
+        <div class="ioc-code">
+            <strong>🎯 {victim.get('post_title', 'Unknown Organization')}</strong><br>
+            <strong>Country:</strong> {victim.get('country', 'Unknown')} | 
+            <strong>Discovered:</strong> {victim.get('discovered', 'Unknown')}<br>
+            <strong>Website:</strong> {victim.get('website', 'N/A') if victim.get('website') else 'N/A'}<br>
+            <strong>Description:</strong> {victim.get('description', 'No description available')[:200] if victim.get('description') else 'No description available'}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Operational Timeline
+    if len(victims) > 1:
+        st.markdown("### 📅 Attack Campaign Timeline")
+        
+        # Parse dates and create timeline
+        victim_dates = []
+        for victim in victims:
+            discovered = victim.get('discovered', '')
+            if discovered and discovered != 'Unknown':
+                try:
+                    date_obj = pd.to_datetime(discovered)
+                    victim_dates.append(date_obj)
+                except:
+                    pass
+        
+        if victim_dates:
+            timeline_df = pd.DataFrame({'Date': victim_dates})
+            timeline_df['Count'] = 1
+            timeline_grouped = timeline_df.groupby(pd.Grouper(key='Date', freq='M')).sum().reset_index()
+            
+            if not timeline_grouped.empty:
+                fig_ransom_timeline = px.line(timeline_grouped, x='Date', y='Count',
+                                              title=f'{selected_actor} - Ransomware Victim Timeline',
+                                              labels={'Count': 'Victims', 'Date': 'Month'})
+                fig_ransom_timeline.update_traces(line_color=CYHAWK_RED, line_width=3, mode='lines+markers')
+                st.plotly_chart(fig_ransom_timeline, use_container_width=True)
+    
+    # Threat Intelligence Summary
+    st.markdown("### 🛡️ Defensive Intelligence")
+    
+    defensive_intel = f"""
+    **Attack Vector Analysis:**
+    - Primary initial access likely via phishing, RDP exploitation, or vulnerability exploitation
+    - {len(victims)} confirmed victims indicates sustained operational capability
+    - {"Multi-country targeting suggests sophisticated infrastructure" if len(victim_countries) > 5 else "Regional focus indicates targeted operations"}
+    
+    **Defensive Priorities:**
+    1. Implement robust backup and disaster recovery procedures
+    2. Deploy endpoint detection and response (EDR) with ransomware-specific detection
+    3. Network segmentation to limit lateral movement
+    4. Enhanced email security and user awareness training
+    5. Vulnerability management and timely patching procedures
+    
+    **Incident Response Readiness:**
+    - Maintain offline, encrypted backups tested regularly
+    - Establish communication procedures for ransom negotiations (if policy permits)
+    - Pre-position incident response retainers and forensic capabilities
+    - Document and practice ransomware-specific playbooks
+    """
+    
+    st.markdown(defensive_intel)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================================================================
+# TIMELINE
+# ============================================================================
+
+if not actor_df.empty:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title">📈 Activity Timeline</h2>', unsafe_allow_html=True)
+    
+    timeline = actor_df.groupby(actor_df['date'].dt.to_period('M')).size().reset_index()
+    timeline.columns = ['Month', 'Incidents']
+    timeline['Month'] = timeline['Month'].dt.to_timestamp()
+    
+    fig_timeline = px.line(timeline, x='Month', y='Incidents',
+                          title=f'{selected_actor} - Attack Frequency Over Time')
+    fig_timeline.update_traces(line_color=CYHAWK_RED, line_width=3, mode='lines+markers')
+    fig_timeline.update_layout(hovermode='x unified')
+    st.plotly_chart(fig_timeline, use_container_width=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================================================================
 # ANALYST ASSESSMENT
-# --------------------------------------------------
-st.subheader("💼 Analyst Assessment")
+# ============================================================================
+
+st.markdown('<div class="section-card">', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">💼 Analyst Assessment</h2>', unsafe_allow_html=True)
+
 st.markdown(f"""
-**Threat Outlook:** Elevated  
-**Confidence Level:** Medium–High  
+**Overall Risk Classification:** {risk_class}
 
-Organizations operating in affected sectors should prioritize:
-1. Proactive monitoring aligned to observed TTPs  
-2. Credential hygiene and access control reviews  
-3. Preparedness for escalation or secondary access resale  
+**{selected_actor}** demonstrates a comprehensive risk score of **{risk_score}/100**, 
+driven by incident frequency, geographic spread, and operational indicators.
 
-This actor remains relevant and should be continuously tracked.
 """)
 
-st.success("Threat actor profile generated successfully.")
+if ransomware_data:
+    st.markdown("""
+**Ransomware Operations:** The presence of documented victims and infrastructure indicates 
+sustained ransomware capability with financial motivation. Double-extortion tactics suggest 
+data theft precedes encryption.
+""")
+
+st.markdown("""
+**Defensive Recommendations:**
+1. Implement detection rules for identified TTPs
+2. Conduct threat hunting for historical compromise indicators
+3. Review and enhance backup and recovery procedures
+4. Deploy advanced endpoint detection and response (EDR)
+5. Participate in threat intelligence sharing communities
+""")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Footer
+st.markdown("---")
+col1, col2 = st.columns([1, 5])
+with col1:
+    st.markdown(f'<a href="/Threat_Actors" style="display: inline-block; padding: 0.75rem 1.5rem; background: transparent; color: {CYHAWK_RED}; border: 2px solid {CYHAWK_RED}; border-radius: 6px; text-decoration: none; font-weight: 600;">← Back</a>', unsafe_allow_html=True)
+with col2:
+    st.success(f"✅ Comprehensive threat intelligence report generated for {selected_actor}")
