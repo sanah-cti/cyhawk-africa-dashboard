@@ -326,54 +326,61 @@ def determine_threat_level(actor_name, total_attacks, countries, sectors, actor_
 # -------------------------------------------------------------------
 # LOAD AND PROCESS DATA
 # -------------------------------------------------------------------
-df = load_data()
+with st.spinner("Loading threat actor intelligence..."):
+    df = load_data()
 
 if not df.empty:
-    # Calculate basic stats
-    stats = df.groupby("actor").agg(
-        attacks=("date", "count"),
-        countries=("country", "nunique"),
-        sectors=("sector", "nunique")
-    ).reset_index()
-    
-    # Enrich with auto-determined data and ransomware intelligence
-    enriched_data = []
-    ransomware_intel_cache = {}  # Cache intelligence per actor
-    
-    for _, row in stats.iterrows():
-        actor_name = row['actor']
-        actor_df = df[df['actor'] == actor_name]
+    with st.spinner("Enriching threat actor profiles..."):
+        # Calculate basic stats
+        stats = df.groupby("actor").agg(
+            attacks=("date", "count"),
+            countries=("country", "nunique"),
+            sectors=("sector", "nunique")
+        ).reset_index()
         
-        # Fetch ransomware intelligence
-        ransomware_intel = fetch_ransomware_intelligence(actor_name)
-        ransomware_intel_cache[actor_name] = ransomware_intel
+        # Enrich with auto-determined data and ransomware intelligence
+        enriched_data = []
+        ransomware_intel_cache = {}  # Cache intelligence per actor
         
-        enriched_data.append({
-            'actor': actor_name,
-            'attacks': row['attacks'],
-            'countries': row['countries'],
-            'sectors': row['sectors'],
-            'type': classify_threat_actor_type(actor_name, actor_df, ransomware_intel),
-            'origin': determine_origin(actor_name, actor_df),
-            'active': f"Since {determine_active_since(actor_df)}",
-            'ransomware_intel': ransomware_intel
-        })
-    
-    stats = pd.DataFrame(enriched_data)
-    
-    # Calculate threat levels
-    stats['threat_level'] = stats.apply(
-        lambda row: determine_threat_level(
-            row['actor'], 
-            row['attacks'], 
-            row['countries'], 
-            row['sectors'],
-            row['type']
-        ), axis=1
-    )
+        for _, row in stats.iterrows():
+            actor_name = row['actor']
+            actor_df = df[df['actor'] == actor_name]
+            
+            # Fetch ransomware intelligence (with error handling)
+            try:
+                ransomware_intel = fetch_ransomware_intelligence(actor_name)
+                ransomware_intel_cache[actor_name] = ransomware_intel
+            except Exception as e:
+                ransomware_intel = None
+                ransomware_intel_cache[actor_name] = None
+            
+            enriched_data.append({
+                'actor': actor_name,
+                'attacks': row['attacks'],
+                'countries': row['countries'],
+                'sectors': row['sectors'],
+                'type': classify_threat_actor_type(actor_name, actor_df, ransomware_intel),
+                'origin': determine_origin(actor_name, actor_df),
+                'active': f"Since {determine_active_since(actor_df)}",
+                'ransomware_intel': ransomware_intel
+            })
+        
+        stats = pd.DataFrame(enriched_data)
+        
+        # Calculate threat levels
+        stats['threat_level'] = stats.apply(
+            lambda row: determine_threat_level(
+                row['actor'], 
+                row['attacks'], 
+                row['countries'], 
+                row['sectors'],
+                row['type']
+            ), axis=1
+        )
 else:
     stats = pd.DataFrame(columns=["actor", "attacks", "countries", "sectors", "type", "origin", "active", "threat_level", "ransomware_intel"])
     ransomware_intel_cache = {}
+    st.warning("⚠️ No incident data found. Please ensure data/incidents.csv exists and contains data.")
 
 # -------------------------------------------------------------------
 # FILTER BAR
@@ -422,6 +429,9 @@ else:
 # Limit display
 if not st.session_state.show_all_actors:
     filtered = filtered.head(12)
+
+# Debug info (remove in production)
+st.markdown(f"**Found {len(stats)} total threat actors. Displaying {len(filtered)} after filters.**")
 
 # -------------------------------------------------------------------
 # DISPLAY ACTOR CARDS
