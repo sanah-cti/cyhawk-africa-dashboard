@@ -127,14 +127,14 @@ st.markdown(f"""
     font-size: 0.9rem;
 }}
 
-.risk-meter {{
+.-meter {{
     text-align: center;
     padding: 2rem;
     border-radius: 12px;
     margin: 1rem 0;
 }}
 
-.risk-critical {{
+.-critical {{
     background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(185, 28, 28, 0.1));
     border: 2px solid #DC2626;
 }}
@@ -969,6 +969,7 @@ with col1:
 # ============================================================================
 
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
+
 st.markdown('<h2 class="section-title">🎯 Risk Assessment</h2>', unsafe_allow_html=True)
 
 col1, col2 = st.columns([1, 2])
