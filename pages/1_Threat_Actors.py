@@ -85,8 +85,13 @@ def load_data():
         return df
     return pd.DataFrame()
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def fetch_ransomware_intelligence(actor_name):
+# Ransomware intelligence fetching removed from this page for performance
+# All ransomware intelligence is fetched only in Actor Profile page
+# This keeps the Threat Actors list page fast
+
+# -------------------------------------------------------------------
+# CLASSIFICATION FUNCTION (SAME AS ACTOR PROFILE PAGE)
+# -------------------------------------------------------------------
     """
     Fetch comprehensive ransomware intelligence from ransomware.live
     Returns: IOCs, YARA rules, locations, vulnerabilities, tools, victims
@@ -330,56 +335,44 @@ with st.spinner("Loading threat actor intelligence..."):
     df = load_data()
 
 if not df.empty:
-    with st.spinner("Enriching threat actor profiles..."):
-        # Calculate basic stats
-        stats = df.groupby("actor").agg(
-            attacks=("date", "count"),
-            countries=("country", "nunique"),
-            sectors=("sector", "nunique")
-        ).reset_index()
+    # Calculate basic stats
+    stats = df.groupby("actor").agg(
+        attacks=("date", "count"),
+        countries=("country", "nunique"),
+        sectors=("sector", "nunique")
+    ).reset_index()
+    
+    # Enrich with auto-determined data (NO ransomware.live fetching here for speed)
+    enriched_data = []
+    
+    for _, row in stats.iterrows():
+        actor_name = row['actor']
+        actor_df = df[df['actor'] == actor_name]
         
-        # Enrich with auto-determined data and ransomware intelligence
-        enriched_data = []
-        ransomware_intel_cache = {}  # Cache intelligence per actor
-        
-        for _, row in stats.iterrows():
-            actor_name = row['actor']
-            actor_df = df[df['actor'] == actor_name]
-            
-            # Fetch ransomware intelligence (with error handling)
-            try:
-                ransomware_intel = fetch_ransomware_intelligence(actor_name)
-                ransomware_intel_cache[actor_name] = ransomware_intel
-            except Exception as e:
-                ransomware_intel = None
-                ransomware_intel_cache[actor_name] = None
-            
-            enriched_data.append({
-                'actor': actor_name,
-                'attacks': row['attacks'],
-                'countries': row['countries'],
-                'sectors': row['sectors'],
-                'type': classify_threat_actor_type(actor_name, actor_df, ransomware_intel),
-                'origin': determine_origin(actor_name, actor_df),
-                'active': f"Since {determine_active_since(actor_df)}",
-                'ransomware_intel': ransomware_intel
-            })
-        
-        stats = pd.DataFrame(enriched_data)
-        
-        # Calculate threat levels
-        stats['threat_level'] = stats.apply(
-            lambda row: determine_threat_level(
-                row['actor'], 
-                row['attacks'], 
-                row['countries'], 
-                row['sectors'],
-                row['type']
-            ), axis=1
-        )
+        enriched_data.append({
+            'actor': actor_name,
+            'attacks': row['attacks'],
+            'countries': row['countries'],
+            'sectors': row['sectors'],
+            'type': classify_threat_actor_type(actor_name, actor_df, None),  # No ransomware intel
+            'origin': determine_origin(actor_name, actor_df),
+            'active': f"Since {determine_active_since(actor_df)}"
+        })
+    
+    stats = pd.DataFrame(enriched_data)
+    
+    # Calculate threat levels
+    stats['threat_level'] = stats.apply(
+        lambda row: determine_threat_level(
+            row['actor'], 
+            row['attacks'], 
+            row['countries'], 
+            row['sectors'],
+            row['type']
+        ), axis=1
+    )
 else:
-    stats = pd.DataFrame(columns=["actor", "attacks", "countries", "sectors", "type", "origin", "active", "threat_level", "ransomware_intel"])
-    ransomware_intel_cache = {}
+    stats = pd.DataFrame(columns=["actor", "attacks", "countries", "sectors", "type", "origin", "active", "threat_level"])
     st.warning("⚠️ No incident data found. Please ensure data/incidents.csv exists and contains data.")
 
 # -------------------------------------------------------------------
@@ -504,43 +497,5 @@ if not filtered.empty:
                                 View Profile
                             </a>
                         """, unsafe_allow_html=True)
-                        
-                        # Show ransomware intelligence if available
-                        if actor['type'] == "Ransomware" and actor.get('ransomware_intel'):
-                            intel = actor['ransomware_intel']
-                            
-                            with st.expander("🔍 Ransomware Intelligence", expanded=False):
-                                # Victims
-                                if intel.get('victims'):
-                                    st.markdown(f"**Victims:** {len(intel['victims'])} confirmed")
-                                
-                                # IOCs
-                                if intel.get('iocs'):
-                                    st.markdown(f"**IOCs:** {len(intel['iocs'])} indicators available")
-                                    with st.expander("View IOCs", expanded=False):
-                                        for ioc in intel['iocs'][:5]:  # Show first 5
-                                            if isinstance(ioc, dict):
-                                                st.code(f"{ioc.get('type', 'N/A')}: {ioc.get('value', 'N/A')}")
-                                
-                                # YARA Rules
-                                if intel.get('yara_rules'):
-                                    st.markdown(f"**YARA Rules:** {len(intel['yara_rules'])} rules available")
-                                
-                                # Locations
-                                if intel.get('locations'):
-                                    locations_str = ", ".join(intel['locations'][:5])
-                                    st.markdown(f"**Known Locations:** {locations_str}")
-                                
-                                # Vulnerabilities
-                                if intel.get('vulnerabilities'):
-                                    st.markdown(f"**Vulnerabilities Exploited:**")
-                                    for vuln in intel['vulnerabilities'][:5]:
-                                        st.markdown(f"- {vuln}")
-                                
-                                # Tools
-                                if intel.get('tools'):
-                                    st.markdown(f"**Tools Used:**")
-                                    for tool in intel['tools'][:5]:
-                                        st.markdown(f"- {tool}")
 else:
     st.info("No threat actors found matching your filters.")
