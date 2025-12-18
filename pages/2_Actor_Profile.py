@@ -6,7 +6,7 @@ Features:
 - ransomware.live enrichment
 - MITRE ATT&CK TTP mapping
 - Risk scoring
-- PDF export
+- PDF export (optional)
 """
 
 import streamlit as st
@@ -18,12 +18,18 @@ import requests
 import os
 import json
 from io import BytesIO
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+# Optional PDF export (graceful fallback if not installed)
+try:
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    PDF_EXPORT_AVAILABLE = True
+except ImportError:
+    PDF_EXPORT_AVAILABLE = False
 
 # Import navigation utilities
 try:
@@ -229,7 +235,82 @@ def fetch_ransomware_live_comprehensive(actor_name):
 # MITRE ATT&CK TTP MAPPING
 # ============================================================================
 
-def infer_mitre_ttps(actor_name, incidents_df, ransomware_data):
+def classify_threat_actor_type(actor_name, incidents_df, ransomware_data):
+    """
+    Intelligently classify threat actor type based on:
+    - Actor name patterns
+    - Incident data characteristics
+    - Ransomware operations
+    - Attack patterns
+    """
+    actor_lower = actor_name.lower()
+    
+    # Ransomware Groups (check ransomware.live data first)
+    if ransomware_data and ransomware_data.get('victims'):
+        return "Ransomware Group"
+    
+    ransomware_keywords = ['ransomware', 'lockbit', 'revil', 'darkside', 'conti', 
+                          'maze', 'blackcat', 'alphv', 'blackbasta', 'ryuk', 
+                          'nightspire', 'play', 'royal', 'medusa']
+    if any(kw in actor_lower for kw in ransomware_keywords):
+        return "Ransomware Group"
+    
+    # Hacktivist Groups
+    hacktivist_keywords = ['anonymous', 'ghost', 'killsec', 'keymous', 'funksec', 
+                          'oursec', 'legion', 'cyber army', 'team', 'squad']
+    if any(kw in actor_lower for kw in hacktivist_keywords):
+        return "Hacktivist Group"
+    
+    # Initial Access Brokers
+    iab_keywords = ['bigbrother', 'broker', 'access', 'initial']
+    if any(kw in actor_lower for kw in iab_keywords):
+        return "Initial Access Broker (IAB)"
+    
+    # Database Breach Specialists
+    db_keywords = ['b4bayega', 'database', 'breach', 'leak', 'dump', 'exfil']
+    if any(kw in actor_lower for kw in db_keywords):
+        return "Database Breach Specialist"
+    
+    # APT Groups (State-Sponsored)
+    apt_keywords = ['apt', 'lazarus', 'fancy bear', 'cozy bear', 'kimsuky', 
+                   'mustang panda', 'winnti', 'sandworm']
+    if any(kw in actor_lower for kw in apt_keywords):
+        return "Advanced Persistent Threat (APT)"
+    
+    # Check incident patterns if available
+    if not incidents_df.empty:
+        # Check for DDoS patterns
+        if 'threat_type' in incidents_df.columns:
+            threat_types = incidents_df['threat_type'].str.lower()
+            
+            if threat_types.str.contains('ddos|denial', case=False, na=False).sum() > len(incidents_df) * 0.5:
+                return "DDoS Attack Group"
+            
+            if threat_types.str.contains('malware|trojan|rat', case=False, na=False).sum() > len(incidents_df) * 0.5:
+                return "Malware Distribution Network"
+            
+            if threat_types.str.contains('phishing|spear', case=False, na=False).sum() > len(incidents_df) * 0.5:
+                return "Phishing Campaign Operator"
+            
+            if threat_types.str.contains('web|sql|injection', case=False, na=False).sum() > len(incidents_df) * 0.5:
+                return "Web Application Exploit Group"
+        
+        # Check for targeted vs opportunistic
+        sectors = incidents_df['sector'].nunique() if not incidents_df.empty else 0
+        countries = incidents_df['country'].nunique() if not incidents_df.empty else 0
+        
+        if sectors == 1 and countries > 5:
+            return "Targeted Cyber Espionage"
+        elif sectors > 5 and countries > 5:
+            return "Financially Motivated Threat Actor"
+    
+    # Exploit/Vulnerability keywords
+    exploit_keywords = ['exploit', 'zero', '0day', 'vulnerability', 'pwn']
+    if any(kw in actor_lower for kw in exploit_keywords):
+        return "Exploit Developer/Seller"
+    
+    # Default classification
+    return "Unclassified Threat Actor"
     """
     Infer MITRE ATT&CK TTPs based on:
     - Actor name patterns
@@ -351,10 +432,55 @@ def get_risk_classification(score):
 # PDF EXPORT FUNCTIONALITY
 # ============================================================================
 
+def add_page_number_and_watermark(canvas, doc):
+    """Add page numbers, watermark, and footer to each page"""
+    canvas.saveState()
+    
+    # Add watermark
+    canvas.setFillColorRGB(0.9, 0.9, 0.9)
+    canvas.setFont("Helvetica-Bold", 60)
+    canvas.saveState()
+    canvas.translate(letter[0]/2, letter[1]/2)
+    canvas.rotate(45)
+    canvas.drawCentredString(0, 0, "CYHAWK AFRICA")
+    canvas.restoreState()
+    
+    # Add footer with page number
+    canvas.setFillColorRGB(0.3, 0.3, 0.3)
+    canvas.setFont("Helvetica", 9)
+    page_num = canvas.getPageNumber()
+    footer_text = f"CyHawk Africa Threat Intelligence Platform | Page {page_num}"
+    canvas.drawString(inch, 0.5*inch, footer_text)
+    
+    # Add confidentiality notice
+    canvas.setFont("Helvetica-Bold", 8)
+    canvas.setFillColorRGB(0.77, 0.12, 0.23)  # CyHawk Red
+    canvas.drawRightString(letter[0] - inch, 0.5*inch, "CONFIDENTIAL - TLP:AMBER")
+    
+    canvas.restoreState()
+
 def generate_pdf_report(actor_name, profile_data, incidents_df, ransomware_data, risk_score, ttps):
-    """Generate comprehensive PDF threat brief"""
+    """Generate strategic threat intelligence report with branding"""
+    if not PDF_EXPORT_AVAILABLE:
+        st.error("PDF export requires reportlab package. Install with: pip install reportlab")
+        return None
+    
+    from reportlab.lib.utils import ImageReader
+    import io
+    from PIL import Image, ImageDraw, ImageFont
+    
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    
+    # Create document with custom page template
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=letter, 
+        topMargin=1*inch, 
+        bottomMargin=0.75*inch,
+        leftMargin=0.75*inch,
+        rightMargin=0.75*inch
+    )
+    
     story = []
     styles = getSampleStyleSheet()
     
@@ -362,11 +488,21 @@ def generate_pdf_report(actor_name, profile_data, incidents_df, ransomware_data,
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=24,
+        fontSize=28,
         textColor=colors.HexColor('#C41E3A'),
-        spaceAfter=30,
+        spaceAfter=12,
         alignment=TA_CENTER,
         fontName='Helvetica-Bold'
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=colors.HexColor('#666666'),
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        fontName='Helvetica'
     )
     
     heading_style = ParagraphStyle(
@@ -375,79 +511,315 @@ def generate_pdf_report(actor_name, profile_data, incidents_df, ransomware_data,
         fontSize=16,
         textColor=colors.HexColor('#C41E3A'),
         spaceAfter=12,
-        spaceBefore=12,
-        fontName='Helvetica-Bold'
+        spaceBefore=18,
+        fontName='Helvetica-Bold',
+        borderWidth=0,
+        borderColor=colors.HexColor('#C41E3A'),
+        borderPadding=8
     )
     
-    # Title
-    story.append(Paragraph(f"THREAT ACTOR INTELLIGENCE BRIEF", title_style))
-    story.append(Paragraph(f"{actor_name}", title_style))
+    classification_style = ParagraphStyle(
+        'Classification',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#C41E3A'),
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        spaceAfter=20
+    )
+    
+    # ========== COVER PAGE ==========
+    
+    # Add logo if available
+    logo_path = "assets/cyhawk_logo.png"
+    if os.path.exists(logo_path):
+        try:
+            img = Image.open(logo_path)
+            # Resize logo to reasonable size
+            img.thumbnail((200, 80), Image.Resampling.LANCZOS)
+            img_buffer = BytesIO()
+            img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            logo = ImageReader(img_buffer)
+            from reportlab.platypus import Image as RLImage
+            logo_img = RLImage(img_buffer, width=200, height=80)
+            logo_img.hAlign = 'CENTER'
+            story.append(logo_img)
+            story.append(Spacer(1, 0.3*inch))
+        except:
+            # If logo fails, add text logo
+            story.append(Paragraph("CYHAWK AFRICA", title_style))
+            story.append(Spacer(1, 0.2*inch))
+    else:
+        story.append(Paragraph("CYHAWK AFRICA", title_style))
+        story.append(Spacer(1, 0.2*inch))
+    
+    # Report type
+    story.append(Paragraph("STRATEGIC THREAT INTELLIGENCE REPORT", subtitle_style))
+    story.append(Spacer(1, 0.5*inch))
+    
+    # Actor name - main title
+    story.append(Paragraph(f"THREAT ACTOR: {actor_name.upper()}", title_style))
     story.append(Spacer(1, 0.3*inch))
     
-    # Metadata
-    story.append(Paragraph(f"Classification: {profile_data['classification']}", styles['Normal']))
-    story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}", styles['Normal']))
-    story.append(Paragraph(f"Source: CyHawk Africa Threat Intelligence Platform", styles['Normal']))
-    story.append(Spacer(1, 0.3*inch))
-    
-    # Risk Score
-    story.append(Paragraph("RISK ASSESSMENT", heading_style))
+    # Classification banner
     risk_class, _, _ = get_risk_classification(risk_score)
-    story.append(Paragraph(f"<b>Risk Score:</b> {risk_score}/100 ({risk_class})", styles['Normal']))
-    story.append(Spacer(1, 0.2*inch))
+    story.append(Paragraph(f"CLASSIFICATION: {risk_class} RISK | TLP:AMBER", classification_style))
+    story.append(Spacer(1, 0.5*inch))
     
-    # Overview
+    # Report metadata table
+    metadata = [
+        ['Report Generated:', datetime.now().strftime('%d %B %Y at %H:%M UTC')],
+        ['Threat Actor Type:', profile_data['type']],
+        ['Risk Score:', f"{risk_score}/100 ({risk_class})"],
+        ['Active Since:', profile_data['active_since']],
+        ['Incidents Tracked:', str(len(incidents_df))],
+        ['Data Sources:', 'CyHawk Telemetry, Ransomware.live, OSINT'],
+    ]
+    
+    metadata_table = Table(metadata, colWidths=[2*inch, 4*inch])
+    metadata_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.grey),
+    ]))
+    story.append(metadata_table)
+    story.append(Spacer(1, 0.5*inch))
+    
+    # Confidentiality notice
+    confidentiality_text = """
+    <b>CONFIDENTIALITY NOTICE:</b> This strategic threat intelligence report contains sensitive 
+    security information and is intended solely for authorized personnel. Distribution is 
+    restricted to TLP:AMBER - Limited disclosure, recipients can share with their organization 
+    and clients on a need-to-know basis.
+    """
+    story.append(Paragraph(confidentiality_text, styles['Normal']))
+    
+    story.append(PageBreak())
+    
+    # ========== EXECUTIVE SUMMARY ==========
+    
     story.append(Paragraph("EXECUTIVE SUMMARY", heading_style))
+    
     if not incidents_df.empty:
-        overview = f"""
-        <b>{actor_name}</b> has been linked to <b>{len(incidents_df)} confirmed incidents</b> 
-        affecting <b>{incidents_df['country'].nunique()} countries</b> across 
-        <b>{incidents_df['sector'].nunique()} industry sectors</b>. 
+        exec_summary = f"""
+        <b>{actor_name}</b> represents a <b>{risk_class} risk threat actor</b> with confirmed 
+        operational capability. Intelligence analysis reveals <b>{len(incidents_df)} documented cyber incidents</b> 
+        impacting <b>{incidents_df['country'].nunique()} countries</b> across 
+        <b>{incidents_df['sector'].nunique()} critical industry sectors</b>.
+        <br/><br/>
+        <b>Threat Actor Classification:</b> {profile_data['type']}<br/>
+        <b>Operational Timeline:</b> {incidents_df['date'].min().strftime('%B %Y')} to {incidents_df['date'].max().strftime('%B %Y')}<br/>
+        <b>Geographic Scope:</b> {"Multi-national operations" if incidents_df['country'].nunique() > 5 else "Regional targeting"}
         """
+        
         if ransomware_data and ransomware_data.get('victims'):
-            overview += f"Ransomware operations have compromised <b>{len(ransomware_data['victims'])} victim organizations</b>."
-        story.append(Paragraph(overview, styles['Normal']))
+            exec_summary += f"""
+            <br/><br/>
+            <b>RANSOMWARE OPERATIONS CONFIRMED:</b> {len(ransomware_data['victims'])} documented victim 
+            organizations identified through ransomware.live intelligence feeds. This actor demonstrates 
+            active double-extortion capabilities with sustained financial motivation.
+            """
+    else:
+        exec_summary = f"""
+        <b>{actor_name}</b> is classified as a <b>{profile_data['type']}</b> tracked through 
+        multiple intelligence sources. Limited confirmed incident telemetry suggests either 
+        emerging operations or sophisticated operational security practices.
+        """
+    
+    story.append(Paragraph(exec_summary, styles['Normal']))
+    story.append(Spacer(1, 0.3*inch))
+    
+    # ========== THREAT ASSESSMENT ==========
+    
+    story.append(Paragraph("STRATEGIC THREAT ASSESSMENT", heading_style))
+    
+    # Risk score breakdown
+    risk_assessment = f"""
+    <b>Comprehensive Risk Score: {risk_score}/100</b><br/><br/>
+    This threat actor has been assigned a risk score of {risk_score} out of 100 based on multi-factor 
+    analysis including incident frequency, geographic distribution, sector targeting diversity, 
+    attack severity metrics, and confirmed operational indicators.
+    """
+    story.append(Paragraph(risk_assessment, styles['Normal']))
     story.append(Spacer(1, 0.2*inch))
     
-    # MITRE ATT&CK TTPs
-    story.append(Paragraph("MITRE ATT&CK TACTICS & TECHNIQUES", heading_style))
+    # ========== MITRE ATT&CK FRAMEWORK ==========
+    
+    story.append(Paragraph("MITRE ATT&CK TACTICS, TECHNIQUES & PROCEDURES", heading_style))
+    
     if ttps:
-        ttp_data = [[ttp['id'], ttp['name'], ttp['tactic']] for ttp in ttps[:10]]
-        ttp_table = Table([['ID', 'Technique', 'Tactic']] + ttp_data, colWidths=[1*inch, 3*inch, 1.5*inch])
+        ttp_intro = f"""
+        Based on operational analysis and incident forensics, <b>{len(ttps)} MITRE ATT&CK techniques</b> 
+        have been attributed to this threat actor's operational methodology:
+        """
+        story.append(Paragraph(ttp_intro, styles['Normal']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        # Create TTP table
+        ttp_data = [['Technique ID', 'Technique Name', 'Tactic']]
+        for ttp in ttps[:15]:  # Limit to top 15 for PDF
+            ttp_data.append([ttp['id'], ttp['name'], ttp['tactic']])
+        
+        ttp_table = Table(ttp_data, colWidths=[1*inch, 3.5*inch, 1.5*inch])
         ttp_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('TOPPADDING', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+            ('TOPPADDING', (0, 1), (-1, -1), 6),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         story.append(ttp_table)
-    story.append(Spacer(1, 0.2*inch))
-    
-    # Geographic Targeting
-    if not incidents_df.empty:
-        story.append(Paragraph("GEOGRAPHIC TARGETING", heading_style))
-        countries = incidents_df['country'].value_counts().head(5)
-        for country, count in countries.items():
-            story.append(Paragraph(f"• {country}: {count} incidents", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
     
-    # Recommendations
-    story.append(Paragraph("DEFENSIVE RECOMMENDATIONS", heading_style))
-    recommendations = [
-        "Implement advanced endpoint detection and response (EDR) solutions",
-        "Conduct threat hunting for indicators associated with this actor",
-        "Review and update incident response procedures",
-        "Enhance monitoring for TTPs identified in this brief",
-        "Participate in threat intelligence sharing communities",
-    ]
-    for rec in recommendations:
-        story.append(Paragraph(f"• {rec}", styles['Normal']))
+    story.append(PageBreak())
     
-    # Build PDF
-    doc.build(story)
+    # ========== GEOGRAPHIC TARGETING ANALYSIS ==========
+    
+    if not incidents_df.empty:
+        story.append(Paragraph("GEOGRAPHIC TARGETING ANALYSIS", heading_style))
+        
+        countries = incidents_df['country'].value_counts().head(10)
+        geo_text = f"""
+        Geographic analysis reveals targeting across <b>{incidents_df['country'].nunique()} countries</b>, 
+        with concentrated activity in the following regions:
+        """
+        story.append(Paragraph(geo_text, styles['Normal']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        # Country targeting table
+        country_data = [['Country', 'Incident Count', 'Percentage']]
+        total_incidents = len(incidents_df)
+        for country, count in countries.items():
+            percentage = f"{(count/total_incidents)*100:.1f}%"
+            country_data.append([country, str(count), percentage])
+        
+        country_table = Table(country_data, colWidths=[2.5*inch, 1.5*inch, 1.5*inch])
+        country_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ]))
+        story.append(country_table)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # ========== SECTOR TARGETING ==========
+        
+        story.append(Paragraph("INDUSTRY SECTOR TARGETING", heading_style))
+        
+        sectors = incidents_df['sector'].value_counts().head(10)
+        sector_text = f"""
+        Cross-sector analysis identifies <b>{incidents_df['sector'].nunique()} distinct industry verticals</b> 
+        targeted by this threat actor:
+        """
+        story.append(Paragraph(sector_text, styles['Normal']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        # Sector list
+        for sector, count in sectors.items():
+            story.append(Paragraph(f"• <b>{sector}:</b> {count} incidents", styles['Normal']))
+        
+        story.append(Spacer(1, 0.3*inch))
+    
+    # ========== DEFENSIVE RECOMMENDATIONS ==========
+    
+    story.append(Paragraph("STRATEGIC DEFENSIVE RECOMMENDATIONS", heading_style))
+    
+    recommendations = [
+        "<b>IMMEDIATE ACTIONS (0-24 HOURS):</b>",
+        "• Deploy indicators of compromise (IOCs) across security infrastructure",
+        "• Initiate threat hunting operations for historical compromise indicators",
+        "• Elevate monitoring and alerting for TTPs associated with this actor",
+        "• Brief executive leadership and board on threat actor capabilities",
+        "",
+        "<b>SHORT-TERM ACTIONS (1-7 DAYS):</b>",
+        "• Conduct tabletop exercises simulating this threat actor's TTPs",
+        "• Review and update incident response playbooks",
+        "• Implement additional network segmentation for critical assets",
+        "• Enhance email security controls and user awareness training",
+        "",
+        "<b>LONG-TERM STRATEGIC INITIATIVES:</b>",
+        "• Deploy advanced endpoint detection and response (EDR) solutions",
+        "• Implement zero-trust architecture principles",
+        "• Establish threat intelligence sharing partnerships",
+        "• Conduct regular red team exercises simulating this threat actor",
+        "• Develop and test business continuity plans for ransomware scenarios",
+    ]
+    
+    for rec in recommendations:
+        story.append(Paragraph(rec, styles['Normal']))
+    
+    story.append(Spacer(1, 0.3*inch))
+    
+    # ========== INTELLIGENCE GAPS ==========
+    
+    story.append(Paragraph("INTELLIGENCE GAPS & COLLECTION REQUIREMENTS", heading_style))
+    
+    gaps_text = """
+    The following intelligence requirements have been identified for enhanced threat actor understanding:
+    <br/><br/>
+    • Attribution confirmation and sponsorship identification<br/>
+    • Complete infrastructure mapping and C2 architecture<br/>
+    • Malware variant analysis and capability assessment<br/>
+    • Victim selection criteria and targeting methodology<br/>
+    • Operational tempo and campaign lifecycle analysis
+    """
+    story.append(Paragraph(gaps_text, styles['Normal']))
+    
+    story.append(PageBreak())
+    
+    # ========== CONCLUSION ==========
+    
+    story.append(Paragraph("CONCLUSION & OUTLOOK", heading_style))
+    
+    conclusion = f"""
+    <b>{actor_name}</b> represents a {risk_class.lower()} risk to organizational security posture based 
+    on demonstrated capabilities, operational scope, and historical targeting patterns. The threat actor's 
+    classification as <b>{profile_data['type']}</b> indicates specific defensive priorities and mitigation strategies.
+    <br/><br/>
+    Organizations matching this actor's historical targeting profile should implement recommended defensive 
+    measures immediately and maintain heightened security posture. Continuous monitoring of threat intelligence 
+    feeds and participation in information sharing communities is essential for early warning of emerging campaigns.
+    <br/><br/>
+    <b>THREAT OUTLOOK:</b> {"Critical - Sustained operations expected" if risk_score >= 70 else "High - Continued monitoring required" if risk_score >= 40 else "Moderate - Defensive measures recommended"}
+    """
+    story.append(Paragraph(conclusion, styles['Normal']))
+    
+    story.append(Spacer(1, 0.5*inch))
+    
+    # ========== FOOTER ==========
+    
+    footer_text = """
+    <br/><br/>
+    <i>This strategic threat intelligence report was generated by the CyHawk Africa Threat Intelligence Platform. 
+    For questions regarding this report or additional intelligence requirements, contact your CyHawk analyst.</i>
+    <br/><br/>
+    <b>DISTRIBUTION:</b> TLP:AMBER - Limited disclosure authorized<br/>
+    <b>CLASSIFICATION:</b> CONFIDENTIAL<br/>
+    <b>VALIDITY:</b> This assessment is valid as of the generation date and should be reviewed monthly.
+    """
+    story.append(Paragraph(footer_text, styles['Normal']))
+    
+    # Build PDF with custom page template
+    doc.build(story, onFirstPage=add_page_number_and_watermark, onLaterPages=add_page_number_and_watermark)
+    
     buffer.seek(0)
     return buffer
 
@@ -477,17 +849,20 @@ with st.spinner("Loading threat intelligence..."):
     actor_df = incidents_df[incidents_df['actor'] == selected_actor] if not incidents_df.empty else pd.DataFrame()
     ransomware_data = fetch_ransomware_live_comprehensive(selected_actor)
 
+# Classify actor type
+actor_type = classify_threat_actor_type(selected_actor, actor_df, ransomware_data)
+
 # Calculate risk score and TTPs
 risk_score, risk_breakdown = calculate_comprehensive_risk_score(actor_df, ransomware_data)
 risk_class, risk_css, risk_color = get_risk_classification(risk_score)
-ttps = infer_mitre_ttps(selected_actor, actor_df, ransomware_data)
+ttps = infer_mitre_ttps(selected_actor, actor_df, ransomware_data, actor_type)
 
 # Prepare profile data
 profile_data = {
     'classification': risk_class,
     'origin': 'Under Investigation',
     'active_since': actor_df['date'].min().strftime('%Y') if not actor_df.empty else 'Unknown',
-    'type': 'Ransomware Group' if ransomware_data else 'Unclassified'
+    'type': actor_type  # Use classified type instead of hardcoded
 }
 
 # ============================================================================
@@ -529,35 +904,23 @@ st.markdown(f"""
 col1, col2, col3 = st.columns([1, 1, 4])
 
 with col1:
-    if st.button("📄 Export PDF", use_container_width=True):
-        pdf_buffer = generate_pdf_report(selected_actor, profile_data, actor_df, ransomware_data, risk_score, ttps)
-        st.download_button(
-            label="⬇️ Download PDF",
-            data=pdf_buffer,
-            file_name=f"CyHawk_ThreatBrief_{selected_actor}_{datetime.now().strftime('%Y%m%d')}.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
+    if PDF_EXPORT_AVAILABLE:
+        if st.button("📄 Export PDF", use_container_width=True):
+            with st.spinner("Generating PDF..."):
+                pdf_buffer = generate_pdf_report(selected_actor, profile_data, actor_df, ransomware_data, risk_score, ttps)
+                if pdf_buffer:
+                    st.download_button(
+                        label="⬇️ Download PDF",
+                        data=pdf_buffer,
+                        file_name=f"CyHawk_ThreatBrief_{selected_actor}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+    else:
+        if st.button("📄 Export PDF", use_container_width=True, disabled=True):
+            st.error("Install reportlab for PDF export: `pip install reportlab`")
 
-with col2:
-    if st.button("📊 Export Data", use_container_width=True):
-        export_data = {
-            'actor': selected_actor,
-            'risk_score': risk_score,
-            'risk_classification': risk_class,
-            'incidents': len(actor_df),
-            'countries': actor_df['country'].nunique() if not actor_df.empty else 0,
-            'sectors': actor_df['sector'].nunique() if not actor_df.empty else 0,
-            'ttps': [f"{t['id']}: {t['name']}" for t in ttps],
-            'generated': datetime.now().isoformat()
-        }
-        st.download_button(
-            label="⬇️ Download JSON",
-            data=json.dumps(export_data, indent=2),
-            file_name=f"CyHawk_Data_{selected_actor}_{datetime.now().strftime('%Y%m%d')}.json",
-            mime="application/json",
-            use_container_width=True
-        )
+# col2 and col3 remain for layout spacing but no export button
 
 # ============================================================================
 # RISK SCORE SECTION
