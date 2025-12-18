@@ -460,7 +460,9 @@ if not filtered.empty:
                 threat_badge_class = "threat-critical" if actor['threat_level'] == 'Critical' else "threat-high"
                 
                 # Use st.markdown with unsafe_allow_html for each card
-                st.markdown(f"""
+              import streamlit.components.v1 as components
+
+components.html(f"""
 <div class="actor-card">
     <div class="threat-badge {threat_badge_class}">{actor['threat_level'].upper()}</div>
 
@@ -487,11 +489,11 @@ if not filtered.empty:
         </div>
     </div>
 
-    <a href="/Actor_Profile?actor={actor['actor']}" class="view-profile-btn" target="_self">
+    <a href="/Actor_Profile?actor={actor['actor']}" class="view-profile-btn">
         View Profile
     </a>
 </div>
-""", unsafe_allow_html=True)
+""", height=420)
 
 else:
     st.info("No threat actors found matching your filters.")
