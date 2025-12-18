@@ -459,7 +459,8 @@ if not filtered.empty:
             with cols[idx]:
                 threat_badge_class = "threat-critical" if actor['threat_level'] == 'Critical' else "threat-high"
                 
-                card_html = f"""
+                # Use st.markdown with unsafe_allow_html for each card
+                st.markdown(f"""
                 <div class="actor-card">
                     <div class="threat-badge {threat_badge_class}">{actor['threat_level'].upper()}</div>
                     
@@ -490,8 +491,6 @@ if not filtered.empty:
                         View Profile
                     </a>
                 </div>
-                """
-                st.markdown(card_html, unsafe_allow_html=True)
-                st.markdown("")  # Spacing
+                """, unsafe_allow_html=True)
 else:
     st.info("No threat actors found matching your filters.")
