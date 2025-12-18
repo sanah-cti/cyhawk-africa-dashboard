@@ -86,8 +86,6 @@ def load_data():
     return pd.DataFrame()
 
 # Ransomware intelligence fetching removed from this page for performance
-# All ransomware intelligence is fetched only in Actor Profile page
-# This keeps the Threat Actors list page fast
 
 # -------------------------------------------------------------------
 # CLASSIFICATION FUNCTION (SAME AS ACTOR PROFILE PAGE)
