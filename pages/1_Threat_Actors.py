@@ -461,36 +461,37 @@ if not filtered.empty:
                 
                 # Use st.markdown with unsafe_allow_html for each card
                 st.markdown(f"""
-                <div class="actor-card">
-                    <div class="threat-badge {threat_badge_class}">{actor['threat_level'].upper()}</div>
-                    
-                    <div class="actor-name">{actor['actor']}</div>
-                    
-                    <div class="actor-info">
-                        <strong>Origin:</strong> {actor['origin']}<br>
-                        <strong>Type:</strong> {actor['type']}<br>
-                        <strong>Active:</strong> {actor['active']}
-                    </div>
-                    
-                    <div class="stat-row">
-                        <div class="stat-item">
-                            <div class="stat-label">Attacks</div>
-                            <div class="stat-value">{actor['attacks']}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Countries</div>
-                            <div class="stat-value">{actor['countries']}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Sectors</div>
-                            <div class="stat-value">{actor['sectors']}</div>
-                        </div>
-                    </div>
-                    
-                    <a href="/Actor_Profile?actor={actor['actor']}" class="view-profile-btn" target="_self">
-                        View Profile
-                    </a>
-                </div>
-                """, unsafe_allow_html=True)
+<div class="actor-card">
+    <div class="threat-badge {threat_badge_class}">{actor['threat_level'].upper()}</div>
+
+    <div class="actor-name">{actor['actor']}</div>
+
+    <div class="actor-info">
+        <strong>Origin:</strong> {actor['origin']}<br>
+        <strong>Type:</strong> {actor['type']}<br>
+        <strong>Active:</strong> {actor['active']}
+    </div>
+
+    <div class="stat-row">
+        <div class="stat-item">
+            <div class="stat-label">Attacks</div>
+            <div class="stat-value">{actor['attacks']}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Countries</div>
+            <div class="stat-value">{actor['countries']}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Sectors</div>
+            <div class="stat-value">{actor['sectors']}</div>
+        </div>
+    </div>
+
+    <a href="/Actor_Profile?actor={actor['actor']}" class="view-profile-btn" target="_self">
+        View Profile
+    </a>
+</div>
+""", unsafe_allow_html=True)
+
 else:
     st.info("No threat actors found matching your filters.")
