@@ -86,34 +86,117 @@ def load_data():
     return pd.DataFrame()
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def check_ransomware_live(actor_name):
-    """Quick check if actor is in ransomware.live"""
+def fetch_ransomware_intelligence(actor_name):
+    """
+    Fetch comprehensive ransomware intelligence from ransomware.live
+    Returns: IOCs, YARA rules, locations, vulnerabilities, tools, victims
+    """
     try:
         base = "https://api.ransomware.live"
         actor_normalized = actor_name.lower().replace(' ', '').replace('-', '').replace('_', '')
         
-        # Check recent victims
-        response = requests.get(f"{base}/recentvictims", timeout=5)
-        if response.status_code == 200:
-            victims = response.json()
-            name_variants = [
-                actor_name.lower(),
-                actor_name.replace(' ', '').lower(),
-                actor_name.replace(' ', '-').lower(),
-            ]
-            
-            for victim in victims:
-                group_name = victim.get('group_name', '').lower()
-                if any(variant in group_name or group_name in variant for variant in name_variants):
-                    return True
-        return False
-    except:
-        return False
+        intelligence = {
+            'is_ransomware': False,
+            'victims': [],
+            'group_info': None,
+            'iocs': [],
+            'yara_rules': [],
+            'locations': [],
+            'vulnerabilities': [],
+            'tools': []
+        }
+        
+        # 1. Check recent victims
+        try:
+            response = requests.get(f"{base}/recentvictims", timeout=10)
+            if response.status_code == 200:
+                victims = response.json()
+                name_variants = [
+                    actor_name.lower(),
+                    actor_name.replace(' ', '').lower(),
+                    actor_name.replace(' ', '-').lower(),
+                    actor_name.replace('-', '').lower(),
+                    actor_name.replace('_', '').lower(),
+                ]
+                
+                for victim in victims:
+                    group_name = victim.get('group_name', '').lower()
+                    if any(variant in group_name or group_name in variant for variant in name_variants):
+                        intelligence['victims'].append(victim)
+                        intelligence['is_ransomware'] = True
+        except:
+            pass
+        
+        # 2. Get group-specific information
+        try:
+            response = requests.get(f"{base}/group/{actor_normalized}", timeout=10)
+            if response.status_code == 200:
+                group_data = response.json()
+                intelligence['group_info'] = group_data
+                intelligence['is_ransomware'] = True
+                
+                # Extract additional metadata if available
+                if isinstance(group_data, dict):
+                    intelligence['locations'] = group_data.get('locations', [])
+                    intelligence['tools'] = group_data.get('tools', [])
+        except:
+            pass
+        
+        # 3. Try to get IOCs (Indicators of Compromise)
+        try:
+            # Some ransomware groups have dedicated IOC endpoints
+            response = requests.get(f"{base}/iocs", timeout=10)
+            if response.status_code == 200:
+                all_iocs = response.json()
+                # Filter IOCs for this specific actor
+                if isinstance(all_iocs, list):
+                    for ioc in all_iocs:
+                        if isinstance(ioc, dict):
+                            ioc_group = ioc.get('group', '').lower()
+                            if any(variant in ioc_group for variant in name_variants):
+                                intelligence['iocs'].append(ioc)
+        except:
+            pass
+        
+        # 4. Try to get YARA rules
+        try:
+            response = requests.get(f"{base}/yara", timeout=10)
+            if response.status_code == 200:
+                yara_rules = response.json()
+                if isinstance(yara_rules, list):
+                    for rule in yara_rules:
+                        if isinstance(rule, dict):
+                            rule_name = rule.get('name', '').lower()
+                            if any(variant in rule_name for variant in name_variants):
+                                intelligence['yara_rules'].append(rule)
+        except:
+            pass
+        
+        # 5. Parse vulnerabilities from group info or victims
+        if intelligence['group_info']:
+            group_info = intelligence['group_info']
+            if isinstance(group_info, dict):
+                # Some groups have vulnerability info
+                vulns = group_info.get('vulnerabilities', [])
+                if vulns:
+                    intelligence['vulnerabilities'] = vulns
+        
+        # Also check victim data for vulnerability patterns
+        for victim in intelligence['victims']:
+            if isinstance(victim, dict):
+                vuln = victim.get('vulnerability', '')
+                if vuln and vuln not in intelligence['vulnerabilities']:
+                    intelligence['vulnerabilities'].append(vuln)
+        
+        return intelligence if intelligence['is_ransomware'] else None
+        
+    except Exception as e:
+        return None
 
 # -------------------------------------------------------------------
 # CLASSIFICATION FUNCTION (SAME AS ACTOR PROFILE PAGE)
 # -------------------------------------------------------------------
-def classify_threat_actor_type(actor_name, actor_df):
+def classify_threat_actor_type(actor_name, actor_df, ransomware_intel=None):
     """
     Classify threat actor using same logic as Actor Profile page
     Priority: incident threat_type > ransomware.live > name patterns > default
@@ -153,8 +236,8 @@ def classify_threat_actor_type(actor_name, actor_df):
         if threat_counts[max_type] > 0:
             return max_type
     
-    # STEP 2: Check ransomware.live
-    if check_ransomware_live(actor_name):
+    # STEP 2: Check ransomware.live intelligence
+    if ransomware_intel and ransomware_intel.get('is_ransomware'):
         return "Ransomware"
     
     # STEP 3: Check name patterns
@@ -218,7 +301,7 @@ def determine_active_since(actor_df):
 # -------------------------------------------------------------------
 def determine_threat_level(actor_name, total_attacks, countries, sectors, actor_type):
     """Determine threat level based on multiple factors"""
-    # Ransomware is always Critical
+    # ALL RANSOMWARE GROUPS ARE CRITICAL
     if actor_type == "Ransomware":
         return 'Critical'
     
@@ -253,20 +336,27 @@ if not df.empty:
         sectors=("sector", "nunique")
     ).reset_index()
     
-    # Enrich with auto-determined data
+    # Enrich with auto-determined data and ransomware intelligence
     enriched_data = []
+    ransomware_intel_cache = {}  # Cache intelligence per actor
+    
     for _, row in stats.iterrows():
         actor_name = row['actor']
         actor_df = df[df['actor'] == actor_name]
+        
+        # Fetch ransomware intelligence
+        ransomware_intel = fetch_ransomware_intelligence(actor_name)
+        ransomware_intel_cache[actor_name] = ransomware_intel
         
         enriched_data.append({
             'actor': actor_name,
             'attacks': row['attacks'],
             'countries': row['countries'],
             'sectors': row['sectors'],
-            'type': classify_threat_actor_type(actor_name, actor_df),
+            'type': classify_threat_actor_type(actor_name, actor_df, ransomware_intel),
             'origin': determine_origin(actor_name, actor_df),
-            'active': f"Since {determine_active_since(actor_df)}"
+            'active': f"Since {determine_active_since(actor_df)}",
+            'ransomware_intel': ransomware_intel
         })
     
     stats = pd.DataFrame(enriched_data)
@@ -282,7 +372,8 @@ if not df.empty:
         ), axis=1
     )
 else:
-    stats = pd.DataFrame(columns=["actor", "attacks", "countries", "sectors", "type", "origin", "active", "threat_level"])
+    stats = pd.DataFrame(columns=["actor", "attacks", "countries", "sectors", "type", "origin", "active", "threat_level", "ransomware_intel"])
+    ransomware_intel_cache = {}
 
 # -------------------------------------------------------------------
 # FILTER BAR
@@ -403,5 +494,43 @@ if not filtered.empty:
                                 View Profile
                             </a>
                         """, unsafe_allow_html=True)
+                        
+                        # Show ransomware intelligence if available
+                        if actor['type'] == "Ransomware" and actor.get('ransomware_intel'):
+                            intel = actor['ransomware_intel']
+                            
+                            with st.expander("🔍 Ransomware Intelligence", expanded=False):
+                                # Victims
+                                if intel.get('victims'):
+                                    st.markdown(f"**Victims:** {len(intel['victims'])} confirmed")
+                                
+                                # IOCs
+                                if intel.get('iocs'):
+                                    st.markdown(f"**IOCs:** {len(intel['iocs'])} indicators available")
+                                    with st.expander("View IOCs", expanded=False):
+                                        for ioc in intel['iocs'][:5]:  # Show first 5
+                                            if isinstance(ioc, dict):
+                                                st.code(f"{ioc.get('type', 'N/A')}: {ioc.get('value', 'N/A')}")
+                                
+                                # YARA Rules
+                                if intel.get('yara_rules'):
+                                    st.markdown(f"**YARA Rules:** {len(intel['yara_rules'])} rules available")
+                                
+                                # Locations
+                                if intel.get('locations'):
+                                    locations_str = ", ".join(intel['locations'][:5])
+                                    st.markdown(f"**Known Locations:** {locations_str}")
+                                
+                                # Vulnerabilities
+                                if intel.get('vulnerabilities'):
+                                    st.markdown(f"**Vulnerabilities Exploited:**")
+                                    for vuln in intel['vulnerabilities'][:5]:
+                                        st.markdown(f"- {vuln}")
+                                
+                                # Tools
+                                if intel.get('tools'):
+                                    st.markdown(f"**Tools Used:**")
+                                    for tool in intel['tools'][:5]:
+                                        st.markdown(f"- {tool}")
 else:
     st.info("No threat actors found matching your filters.")
