@@ -1,5 +1,5 @@
 """
-CyHawk Africa – Comprehensive Threat Actor Profile
+CyHawk Africa – Threat Actor Profile
 Features:
 - Dark/Light mode support
 - incidents.csv analysis
