@@ -311,60 +311,167 @@ def classify_threat_actor_type(actor_name, incidents_df, ransomware_data):
     
     # Default classification
     return "Unclassified Threat Actor"
+
+def infer_mitre_ttps(actor_name, incidents_df, ransomware_data, actor_type):
     """
-    Infer MITRE ATT&CK TTPs based on:
-    - Actor name patterns
-    - Incident characteristics
-    - Ransomware operations
+    Infer MITRE ATT&CK TTPs based on threat actor type
+    Each type gets unique, relevant TTPs
     """
     ttps = []
     
-    # Check for ransomware keywords
-    ransomware_keywords = ['ransomware', 'lockbit', 'revil', 'darkside', 'conti', 'maze', 'blackcat']
-    is_ransomware = any(kw in actor_name.lower() for kw in ransomware_keywords)
-    
-    if is_ransomware or (ransomware_data and ransomware_data.get('victims')):
+    # ========== RANSOMWARE GROUPS ==========
+    if actor_type == "Ransomware Group":
         ttps.extend([
-            {'id': 'T1486', 'name': 'Data Encrypted for Impact', 'tactic': 'Impact'},
+            {'id': 'T1566.001', 'name': 'Phishing: Spearphishing Attachment', 'tactic': 'Initial Access'},
+            {'id': 'T1566.002', 'name': 'Phishing: Spearphishing Link', 'tactic': 'Initial Access'},
+            {'id': 'T1204.002', 'name': 'User Execution: Malicious File', 'tactic': 'Execution'},
+            {'id': 'T1059.001', 'name': 'Command and Scripting Interpreter: PowerShell', 'tactic': 'Execution'},
+            {'id': 'T1078', 'name': 'Valid Accounts', 'tactic': 'Persistence'},
+            {'id': 'T1027', 'name': 'Obfuscated Files or Information', 'tactic': 'Defense Evasion'},
             {'id': 'T1490', 'name': 'Inhibit System Recovery', 'tactic': 'Impact'},
+            {'id': 'T1486', 'name': 'Data Encrypted for Impact', 'tactic': 'Impact'},
             {'id': 'T1567', 'name': 'Exfiltration Over Web Service', 'tactic': 'Exfiltration'},
             {'id': 'T1041', 'name': 'Exfiltration Over C2 Channel', 'tactic': 'Exfiltration'},
-            {'id': 'T1566.001', 'name': 'Spearphishing Attachment', 'tactic': 'Initial Access'},
+            {'id': 'T1489', 'name': 'Service Stop', 'tactic': 'Impact'},
+            {'id': 'T1491', 'name': 'Defacement', 'tactic': 'Impact'},
         ])
     
+    # ========== HACKTIVIST GROUPS ==========
+    elif actor_type == "Hacktivist Group":
+        ttps.extend([
+            {'id': 'T1190', 'name': 'Exploit Public-Facing Application', 'tactic': 'Initial Access'},
+            {'id': 'T1133', 'name': 'External Remote Services', 'tactic': 'Initial Access'},
+            {'id': 'T1498', 'name': 'Network Denial of Service', 'tactic': 'Impact'},
+            {'id': 'T1499', 'name': 'Endpoint Denial of Service', 'tactic': 'Impact'},
+            {'id': 'T1491.001', 'name': 'Defacement: Internal Defacement', 'tactic': 'Impact'},
+            {'id': 'T1491.002', 'name': 'Defacement: External Defacement', 'tactic': 'Impact'},
+            {'id': 'T1589', 'name': 'Gather Victim Identity Information', 'tactic': 'Reconnaissance'},
+            {'id': 'T1594', 'name': 'Search Victim-Owned Websites', 'tactic': 'Reconnaissance'},
+            {'id': 'T1136', 'name': 'Create Account', 'tactic': 'Persistence'},
+            {'id': 'T1485', 'name': 'Data Destruction', 'tactic': 'Impact'},
+        ])
+    
+    # ========== INITIAL ACCESS BROKERS ==========
+    elif actor_type == "Initial Access Broker (IAB)":
+        ttps.extend([
+            {'id': 'T1078', 'name': 'Valid Accounts', 'tactic': 'Initial Access'},
+            {'id': 'T1110', 'name': 'Brute Force', 'tactic': 'Credential Access'},
+            {'id': 'T1110.003', 'name': 'Brute Force: Password Spraying', 'tactic': 'Credential Access'},
+            {'id': 'T1190', 'name': 'Exploit Public-Facing Application', 'tactic': 'Initial Access'},
+            {'id': 'T1133', 'name': 'External Remote Services', 'tactic': 'Initial Access'},
+            {'id': 'T1566', 'name': 'Phishing', 'tactic': 'Initial Access'},
+            {'id': 'T1595', 'name': 'Active Scanning', 'tactic': 'Reconnaissance'},
+            {'id': 'T1046', 'name': 'Network Service Discovery', 'tactic': 'Discovery'},
+            {'id': 'T1021.001', 'name': 'Remote Services: Remote Desktop Protocol', 'tactic': 'Lateral Movement'},
+            {'id': 'T1087', 'name': 'Account Discovery', 'tactic': 'Discovery'},
+        ])
+    
+    # ========== DATABASE BREACH SPECIALISTS ==========
+    elif actor_type == "Database Breach Specialist":
+        ttps.extend([
+            {'id': 'T1190', 'name': 'Exploit Public-Facing Application', 'tactic': 'Initial Access'},
+            {'id': 'T1505.003', 'name': 'Server Software Component: Web Shell', 'tactic': 'Persistence'},
+            {'id': 'T1136', 'name': 'Create Account', 'tactic': 'Persistence'},
+            {'id': 'T1213', 'name': 'Data from Information Repositories', 'tactic': 'Collection'},
+            {'id': 'T1005', 'name': 'Data from Local System', 'tactic': 'Collection'},
+            {'id': 'T1074', 'name': 'Data Staged', 'tactic': 'Collection'},
+            {'id': 'T1030', 'name': 'Data Transfer Size Limits', 'tactic': 'Exfiltration'},
+            {'id': 'T1048', 'name': 'Exfiltration Over Alternative Protocol', 'tactic': 'Exfiltration'},
+            {'id': 'T1567', 'name': 'Exfiltration Over Web Service', 'tactic': 'Exfiltration'},
+            {'id': 'T1087', 'name': 'Account Discovery', 'tactic': 'Discovery'},
+        ])
+    
+    # ========== APT GROUPS ==========
+    elif actor_type == "Advanced Persistent Threat (APT)":
+        ttps.extend([
+            {'id': 'T1566.001', 'name': 'Phishing: Spearphishing Attachment', 'tactic': 'Initial Access'},
+            {'id': 'T1189', 'name': 'Drive-by Compromise', 'tactic': 'Initial Access'},
+            {'id': 'T1203', 'name': 'Exploitation for Client Execution', 'tactic': 'Execution'},
+            {'id': 'T1547', 'name': 'Boot or Logon Autostart Execution', 'tactic': 'Persistence'},
+            {'id': 'T1055', 'name': 'Process Injection', 'tactic': 'Defense Evasion'},
+            {'id': 'T1027', 'name': 'Obfuscated Files or Information', 'tactic': 'Defense Evasion'},
+            {'id': 'T1003', 'name': 'OS Credential Dumping', 'tactic': 'Credential Access'},
+            {'id': 'T1057', 'name': 'Process Discovery', 'tactic': 'Discovery'},
+            {'id': 'T1082', 'name': 'System Information Discovery', 'tactic': 'Discovery'},
+            {'id': 'T1071', 'name': 'Application Layer Protocol', 'tactic': 'Command and Control'},
+            {'id': 'T1041', 'name': 'Exfiltration Over C2 Channel', 'tactic': 'Exfiltration'},
+        ])
+    
+    # ========== DDOS ATTACK GROUPS ==========
+    elif actor_type == "DDoS Attack Group":
+        ttps.extend([
+            {'id': 'T1583.005', 'name': 'Acquire Infrastructure: Botnet', 'tactic': 'Resource Development'},
+            {'id': 'T1498', 'name': 'Network Denial of Service', 'tactic': 'Impact'},
+            {'id': 'T1498.001', 'name': 'Network Denial of Service: Direct Network Flood', 'tactic': 'Impact'},
+            {'id': 'T1498.002', 'name': 'Network Denial of Service: Reflection Amplification', 'tactic': 'Impact'},
+            {'id': 'T1499', 'name': 'Endpoint Denial of Service', 'tactic': 'Impact'},
+            {'id': 'T1499.004', 'name': 'Endpoint Denial of Service: Application or System Exploitation', 'tactic': 'Impact'},
+            {'id': 'T1595', 'name': 'Active Scanning', 'tactic': 'Reconnaissance'},
+        ])
+    
+    # ========== MALWARE DISTRIBUTION NETWORKS ==========
+    elif actor_type == "Malware Distribution Network":
+        ttps.extend([
+            {'id': 'T1566.001', 'name': 'Phishing: Spearphishing Attachment', 'tactic': 'Initial Access'},
+            {'id': 'T1566.002', 'name': 'Phishing: Spearphishing Link', 'tactic': 'Initial Access'},
+            {'id': 'T1204.002', 'name': 'User Execution: Malicious File', 'tactic': 'Execution'},
+            {'id': 'T1059', 'name': 'Command and Scripting Interpreter', 'tactic': 'Execution'},
+            {'id': 'T1547', 'name': 'Boot or Logon Autostart Execution', 'tactic': 'Persistence'},
+            {'id': 'T1027', 'name': 'Obfuscated Files or Information', 'tactic': 'Defense Evasion'},
+            {'id': 'T1140', 'name': 'Deobfuscate/Decode Files or Information', 'tactic': 'Defense Evasion'},
+            {'id': 'T1071', 'name': 'Application Layer Protocol', 'tactic': 'Command and Control'},
+            {'id': 'T1105', 'name': 'Ingress Tool Transfer', 'tactic': 'Command and Control'},
+        ])
+    
+    # ========== PHISHING CAMPAIGN OPERATORS ==========
+    elif actor_type == "Phishing Campaign Operator":
+        ttps.extend([
+            {'id': 'T1598', 'name': 'Phishing for Information', 'tactic': 'Reconnaissance'},
+            {'id': 'T1566.001', 'name': 'Phishing: Spearphishing Attachment', 'tactic': 'Initial Access'},
+            {'id': 'T1566.002', 'name': 'Phishing: Spearphishing Link', 'tactic': 'Initial Access'},
+            {'id': 'T1566.003', 'name': 'Phishing: Spearphishing via Service', 'tactic': 'Initial Access'},
+            {'id': 'T1586', 'name': 'Compromise Accounts', 'tactic': 'Resource Development'},
+            {'id': 'T1585', 'name': 'Establish Accounts', 'tactic': 'Resource Development'},
+            {'id': 'T1589', 'name': 'Gather Victim Identity Information', 'tactic': 'Reconnaissance'},
+            {'id': 'T1056.003', 'name': 'Input Capture: Web Portal Capture', 'tactic': 'Collection'},
+        ])
+    
+    # ========== WEB APPLICATION EXPLOIT GROUPS ==========
+    elif actor_type == "Web Application Exploit Group":
+        ttps.extend([
+            {'id': 'T1190', 'name': 'Exploit Public-Facing Application', 'tactic': 'Initial Access'},
+            {'id': 'T1505.003', 'name': 'Server Software Component: Web Shell', 'tactic': 'Persistence'},
+            {'id': 'T1059', 'name': 'Command and Scripting Interpreter', 'tactic': 'Execution'},
+            {'id': 'T1140', 'name': 'Deobfuscate/Decode Files or Information', 'tactic': 'Defense Evasion'},
+            {'id': 'T1083', 'name': 'File and Directory Discovery', 'tactic': 'Discovery'},
+            {'id': 'T1005', 'name': 'Data from Local System', 'tactic': 'Collection'},
+        ])
+    
+    # ========== DEFAULT/UNCLASSIFIED ==========
+    else:
+        ttps.extend([
+            {'id': 'T1566', 'name': 'Phishing', 'tactic': 'Initial Access'},
+            {'id': 'T1190', 'name': 'Exploit Public-Facing Application', 'tactic': 'Initial Access'},
+            {'id': 'T1204', 'name': 'User Execution', 'tactic': 'Execution'},
+            {'id': 'T1059', 'name': 'Command and Scripting Interpreter', 'tactic': 'Execution'},
+            {'id': 'T1078', 'name': 'Valid Accounts', 'tactic': 'Persistence'},
+            {'id': 'T1027', 'name': 'Obfuscated Files or Information', 'tactic': 'Defense Evasion'},
+            {'id': 'T1082', 'name': 'System Information Discovery', 'tactic': 'Discovery'},
+            {'id': 'T1005', 'name': 'Data from Local System', 'tactic': 'Collection'},
+        ])
+    
+    # Add context-specific TTPs based on incident data
     if not incidents_df.empty:
-        # Multiple sectors = sophisticated targeting
-        if incidents_df['sector'].nunique() > 3:
-            ttps.append({'id': 'T1589', 'name': 'Gather Victim Identity Information', 'tactic': 'Reconnaissance'})
-            ttps.append({'id': 'T1590', 'name': 'Gather Victim Network Information', 'tactic': 'Reconnaissance'})
+        countries = incidents_df['country'].nunique()
+        sectors = incidents_df['sector'].nunique()
         
-        # Multiple countries = infrastructure
-        if incidents_df['country'].nunique() > 5:
+        if countries > 5:
             ttps.append({'id': 'T1583', 'name': 'Acquire Infrastructure', 'tactic': 'Resource Development'})
-            ttps.append({'id': 'T1584', 'name': 'Compromise Infrastructure', 'tactic': 'Resource Development'})
         
-        # High severity attacks = privilege escalation
-        if 'severity' in incidents_df.columns and len(incidents_df[incidents_df['severity'] == 'High']) > 5:
-            ttps.append({'id': 'T1078', 'name': 'Valid Accounts', 'tactic': 'Privilege Escalation'})
-            ttps.append({'id': 'T1068', 'name': 'Exploitation for Privilege Escalation', 'tactic': 'Privilege Escalation'})
+        if sectors > 3:
+            ttps.append({'id': 'T1589', 'name': 'Gather Victim Identity Information', 'tactic': 'Reconnaissance'})
     
-    # Common TTPs for any threat actor
-    ttps.extend([
-        {'id': 'T1059', 'name': 'Command and Scripting Interpreter', 'tactic': 'Execution'},
-        {'id': 'T1027', 'name': 'Obfuscated Files or Information', 'tactic': 'Defense Evasion'},
-        {'id': 'T1082', 'name': 'System Information Discovery', 'tactic': 'Discovery'},
-        {'id': 'T1005', 'name': 'Data from Local System', 'tactic': 'Collection'},
-    ])
-    
-    # Remove duplicates
-    seen = set()
-    unique_ttps = []
-    for ttp in ttps:
-        if ttp['id'] not in seen:
-            seen.add(ttp['id'])
-            unique_ttps.append(ttp)
-    
-    return unique_ttps
+    return ttps
 
 # ============================================================================
 # RISK SCORING ENGINE
