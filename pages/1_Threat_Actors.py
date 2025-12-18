@@ -8,10 +8,11 @@ import requests
 try:
     from navigation_utils import add_logo_and_branding, set_page_config as custom_set_page_config
     custom_set_page_config(
-        page_title="Threat Actor Intelligence | CyHawk Africa",
-        page_icon="assets/favicon.ico",
-        layout="wide"
-    )
+    page_title="Threat Actor Intelligence | CyHawk Africa",
+    page_icon="assets/favicon.ico",
+    layout="wide"
+)
+
     add_logo_and_branding()
 except ImportError:
     st.set_page_config(
