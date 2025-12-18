@@ -8,11 +8,10 @@ import requests
 try:
     from navigation_utils import add_logo_and_branding, set_page_config as custom_set_page_config
     custom_set_page_config(
-    page_title="Threat Actor Intelligence | CyHawk Africa",
-    page_icon="assets/favicon.ico",
-    layout="wide"
-)
-
+        page_title="Threat Actor Intelligence | CyHawk Africa",
+        page_icon="assets/favicon.ico",
+        layout="wide"
+    )
     add_logo_and_branding()
 except ImportError:
     st.set_page_config(
@@ -60,119 +59,6 @@ st.markdown(f"""
     max-width: 720px;
     margin: 0 auto;
     line-height: 1.6;
-}}
-
-/* Actor Cards - Adaptive Colors */
-.actor-card {{
-    background: var(--secondary-background-color);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1.5rem;
-    height: 100%;
-    transition: all 0.3s ease;
-    position: relative;
-}}
-
-.actor-card:hover {{
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(196, 30, 58, 0.2);
-    border-color: {CYHAWK_RED};
-}}
-
-.threat-badge {{
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.35rem 0.8rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}}
-
-.threat-critical {{
-    background: rgba(220, 38, 38, 0.15);
-    color: #DC2626;
-    border: 1px solid #DC2626;
-}}
-
-.threat-high {{
-    background: rgba(249, 115, 22, 0.15);
-    color: #F97316;
-    border: 1px solid #F97316;
-}}
-
-.actor-name {{
-    font-size: 1.4rem;
-    font-weight: 700;
-    margin-bottom: 0.8rem;
-    color: var(--text-color);
-}}
-
-.actor-info {{
-    margin: 0.6rem 0;
-    font-size: 0.9rem;
-    color: var(--text-color);
-    opacity: 0.8;
-}}
-
-.actor-info strong {{
-    opacity: 1;
-    font-weight: 600;
-}}
-
-.stat-row {{
-    display: flex;
-    justify-content: space-between;
-    margin-top: 1.2rem;
-    padding-top: 1.2rem;
-    border-top: 1px solid var(--border-color);
-}}
-
-.stat-item {{
-    text-align: center;
-    flex: 1;
-}}
-
-.stat-label {{
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-color);
-    opacity: 0.6;
-    margin-bottom: 0.3rem;
-}}
-
-.stat-value {{
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--text-color);
-}}
-
-.view-profile-btn {{
-    margin-top: 1.2rem;
-    width: 100%;
-    background: {CYHAWK_RED};
-    color: white;
-    padding: 0.75rem;
-    border-radius: 8px;
-    text-align: center;
-    text-decoration: none;
-    font-weight: 600;
-    display: block;
-    transition: all 0.2s ease;
-}}
-
-.view-profile-btn:hover {{
-    background: {CYHAWK_RED_DARK};
-    text-decoration: none;
-    color: white;
-}}
-
-/* Ensure proper spacing */
-[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] {{
-    gap: 1rem;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -452,46 +338,70 @@ if not st.session_state.show_all_actors:
 if not filtered.empty:
     # Create grid layout (4 columns)
     num_cols = 4
-    rows = [filtered.iloc[i:i+num_cols] for i in range(0, len(filtered), num_cols)]
+    num_actors = len(filtered)
     
-    for row_data in rows:
-        cols = st.columns(num_cols)
-        for idx, (_, actor) in enumerate(row_data.iterrows()):
-            with cols[idx]:
-                threat_badge_class = "threat-critical" if actor['threat_level'] == 'Critical' else "threat-high"
+    for i in range(0, num_actors, num_cols):
+        cols = st.columns(num_cols, gap="medium")
+        
+        for j in range(num_cols):
+            if i + j < num_actors:
+                actor = filtered.iloc[i + j]
+                threat_badge_color = "#DC2626" if actor['threat_level'] == 'Critical' else '#F97316'
                 
-                # Use st.markdown with unsafe_allow_html for each card
-                st.markdown(f"""
-                <div class="actor-card">
-                    <div class="threat-badge {threat_badge_class}">{actor['threat_level'].upper()}</div>
-                    
-                    <div class="actor-name">{actor['actor']}</div>
-                    
-                    <div class="actor-info">
-                        <strong>Origin:</strong> {actor['origin']}<br>
-                        <strong>Type:</strong> {actor['type']}<br>
-                        <strong>Active:</strong> {actor['active']}
-                    </div>
-                    
-                    <div class="stat-row">
-                        <div class="stat-item">
-                            <div class="stat-label">Attacks</div>
-                            <div class="stat-value">{actor['attacks']}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Countries</div>
-                            <div class="stat-value">{actor['countries']}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Sectors</div>
-                            <div class="stat-value">{actor['sectors']}</div>
-                        </div>
-                    </div>
-                    
-                    <a href="/Actor_Profile?actor={actor['actor']}" class="view-profile-btn" target="_self">
-                        View Profile
-                    </a>
-                </div>
-                """, unsafe_allow_html=True)
+                with cols[j]:
+                    with st.container(border=True):
+                        # Header with threat badge
+                        st.markdown(f"""
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; flex: 1; padding-right: 1rem;">
+                                    {actor['actor']}
+                                </h3>
+                                <span style="background: {threat_badge_color}; color: white; padding: 0.25rem 0.6rem; 
+                                      border-radius: 12px; font-size: 0.65rem; font-weight: 700; 
+                                      text-transform: uppercase; white-space: nowrap;">
+                                    {actor['threat_level'].upper()}
+                                </span>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Info
+                        st.markdown(f"""
+                            <div style="font-size: 0.85rem; opacity: 0.8;
+                                 margin-bottom: 1rem; line-height: 1.6;">
+                                <div><strong>Origin:</strong> {actor['origin']}</div>
+                                <div><strong>Type:</strong> {actor['type']}</div>
+                                <div><strong>Active:</strong> {actor['active']}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Stats
+                        stat_col1, stat_col2, stat_col3 = st.columns(3)
+                        with stat_col1:
+                            st.metric("Attacks", int(actor['attacks']))
+                        with stat_col2:
+                            st.metric("Countries", int(actor['countries']))
+                        with stat_col3:
+                            st.metric("Sectors", int(actor['sectors']))
+                        
+                        # View Profile button
+                        actor_url_safe = actor['actor'].replace(' ', '%20')
+                        st.markdown(f"""
+                            <a href="/Actor_Profile?actor={actor_url_safe}" target="_self" style="
+                                display: block;
+                                width: 100%;
+                                padding: 0.5rem;
+                                background: {CYHAWK_RED};
+                                color: white;
+                                text-align: center;
+                                text-decoration: none;
+                                border-radius: 6px;
+                                font-weight: 600;
+                                margin-top: 0.5rem;
+                                transition: all 0.3s ease;
+                            " onmouseover="this.style.background='{CYHAWK_RED_DARK}'" 
+                               onmouseout="this.style.background='{CYHAWK_RED}'">
+                                View Profile
+                            </a>
+                        """, unsafe_allow_html=True)
 else:
     st.info("No threat actors found matching your filters.")
