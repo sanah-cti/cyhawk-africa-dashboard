@@ -237,64 +237,66 @@ def fetch_ransomware_live_comprehensive(actor_name):
 
 def classify_threat_actor_type(actor_name, incidents_df, ransomware_data):
     """
-    Classify threat actor into one of 4 categories:
-    1. Ransomware
-    2. Hacktivist  
-    3. Database Breach
-    4. Initial Access Broker (IAB)
-    
-    Priority: ransomware.live data is the most authoritative source
+    Classify threat actor type strictly based on MAJOR THREAT ACTIVITY.
+
+    Classification Rules:
+    - Ransomware activity            -> Ransomware
+    - DDoS / Defacement              -> Hacktivist
+    - Database leaks / dumps         -> Database Breach Actor
+    - Access, creds, exploits, vulns -> Initial Access Broker (IAB)
+
+    This function intentionally avoids name-based bias.
     """
-    actor_lower = actor_name.lower()
-    
-    # ========== 1. RANSOMWARE (HIGHEST PRIORITY) ==========
-    # Check ransomware.live data first - most authoritative source
-    if ransomware_data:
-        if ransomware_data.get('victims') or ransomware_data.get('group_info'):
-            return "Ransomware"
-    
-    # Known ransomware groups by name
-    ransomware_keywords = [
-        'ransomware', 'lockbit', 'revil', 'darkside', 'conti', 
-        'maze', 'blackcat', 'alphv', 'blackbasta', 'ryuk', 
-        'nightspire', 'play', 'royal', 'medusa', 'akira',
-        'ragnar', 'hive', 'cuba', 'quantum', 'blackmatter',
-        'funksec', 'ransom', 'crypt', 'locker'
-    ]
-    if any(kw in actor_lower for kw in ransomware_keywords):
+
+    # Normalize threat types from incident telemetry
+    threat_types = []
+    if not incidents_df.empty and 'threat_type' in incidents_df.columns:
+        threat_types = incidents_df['threat_type'].str.lower().dropna().tolist()
+
+    # ========== 1. RANSOMWARE ==========
+    # Highest confidence: ransomware.live confirmation
+    if ransomware_data and (
+        ransomware_data.get('victims') or ransomware_data.get('group_info')
+    ):
         return "Ransomware"
-    
-    # Check incident data for ransomware patterns
-    if not incidents_df.empty and 'threat_type' in incidents_df.columns:
-        threat_types = incidents_df['threat_type'].str.lower()
-        if threat_types.str.contains('ransomware|encrypt|ransom', case=False, na=False).sum() > len(incidents_df) * 0.2:
-            return "Ransomware"
-    
+
+    if any(
+        any(k in t for k in ['ransomware', 'encrypt', 'extortion'])
+        for t in threat_types
+    ):
+        return "Ransomware"
+
     # ========== 2. INITIAL ACCESS BROKER (IAB) ==========
-    iab_keywords = ['bigbrother', 'broker', 'access', 'iab', 'initial']
-    if any(kw in actor_lower for kw in iab_keywords):
+    if any(
+        any(k in t for k in [
+            'access', 'credential', 'creds', 'exploit',
+            'vulnerability', 'source code', 'initial access'
+        ])
+        for t in threat_types
+    ):
         return "Initial Access Broker (IAB)"
-    
-    # Check for IAB patterns in incidents
-    if not incidents_df.empty and 'threat_type' in incidents_df.columns:
-        threat_types = incidents_df['threat_type'].str.lower()
-        if threat_types.str.contains('access|credential|rdp|vpn', case=False, na=False).sum() > len(incidents_df) * 0.4:
-            return "Initial Access Broker (IAB)"
-    
-    # ========== 3. DATABASE BREACH ==========
-    db_keywords = ['b4bayega', 'database', 'breach', 'leak', 'dump', 'shinyh', 'data']
-    if any(kw in actor_lower for kw in db_keywords):
-        return "Database Breach"
-    
-    # Check for database breach patterns in incidents
-    if not incidents_df.empty and 'threat_type' in incidents_df.columns:
-        threat_types = incidents_df['threat_type'].str.lower()
-        if threat_types.str.contains('database|breach|leak|dump|exfil|sql', case=False, na=False).sum() > len(incidents_df) * 0.3:
-            return "Database Breach"
-    
-    # ========== 4. HACKTIVIST (DEFAULT) ==========
-    # All other actors default to Hacktivist
-    # This includes: defacement, DDoS, political motivation, etc.
+
+    # ========== 3. DATABASE BREACH ACTOR ==========
+    if any(
+        any(k in t for k in [
+            'database', 'breach', 'leak', 'dump', 'sql', 'exfiltration'
+        ])
+        for t in threat_types
+    ):
+        return "Database Breach Actor"
+
+    # ========== 4. HACKTIVIST ==========
+    # DDoS, defacement, political disruption
+    if any(
+        any(k in t for k in [
+            'ddos', 'dos', 'denial', 'defacement', 'website deface'
+        ])
+        for t in threat_types
+    ):
+        return "Hacktivist"
+
+    # ========== FALLBACK ==========
+    # If telemetry is weak or missing, default to Hacktivist
     return "Hacktivist"
 
 def infer_mitre_ttps(actor_name, incidents_df, ransomware_data, actor_type):
