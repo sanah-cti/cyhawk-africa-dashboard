@@ -12,6 +12,11 @@
 # REPLACE WITH:
 import streamlit as st
 
+try:
+    from navigation_utils import add_logo_and_branding
+except ImportError:
+    pass
+
 st.page_link("home.py", label="Home")
 
 
