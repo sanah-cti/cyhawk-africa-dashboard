@@ -7,7 +7,6 @@ font = "sans serif"
 
 [browser]
 gatherUsageStats = false
-serverAddress = "dashboard.cyhawk-africa.com"
 
 [server]
 headless = true
