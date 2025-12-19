@@ -10,7 +10,7 @@
 #     st.page_link("Home.py", label="home", icon="🏠")
 # 
 # REPLACE WITH:
-st.page_link("Home.py", label="Home", icon="🏠")
+st.page_link("home.py", label="Home", icon=":house:")
 
 
 # -----------------------------------------------------------------------------
