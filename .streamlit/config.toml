@@ -12,7 +12,7 @@ serverAddress = "dashboard.cyhawk-africa.com"
 [server]
 headless = true
 enableCORS = false
-enableXsrfProtection = true
+enableXsrfProtection = false
 baseUrlPath = ""
 port = 8080
 address = "0.0.0.0"
