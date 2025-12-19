@@ -7,13 +7,20 @@ font = "sans serif"
 
 [browser]
 gatherUsageStats = false
+serverAddress = "dashboard.cyhawk-africa.com"
 
 [server]
 headless = true
 enableCORS = false
-enableXsrfProtection = false
+enableXsrfProtection = true
 baseUrlPath = ""
+port = 8080
+address = "0.0.0.0"
+
+# Security headers
+[server.xsrfProtection]
+enabled = true
 
 [client]
-showErrorDetails = true
-toolbarMode = "auto"
+showErrorDetails = false
+toolbarMode = "minimal"
