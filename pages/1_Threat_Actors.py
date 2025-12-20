@@ -33,35 +33,52 @@ if 'show_all_actors' not in st.session_state:
 # -------------------------------------------------------------------
 # CSS STYLES - DARK/LIGHT MODE ADAPTIVE
 # -------------------------------------------------------------------
-st.markdown(f"""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-* {{ font-family: 'Inter', sans-serif; }}
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
 
-.hero {{
-    background: linear-gradient(135deg, {CYHAWK_RED} 0%, {CYHAWK_RED_DARK} 100%);
-    padding: 3.5rem 2rem;
-    border-radius: 14px;
-    text-align: center;
-    margin-bottom: 2.5rem;
-    box-shadow: 0 8px 32px rgba(196, 30, 58, 0.3);
-}}
-.hero h1 {{
-    color: #ffffff;
-    font-size: 2.8rem;
-    font-weight: 800;
-    margin-bottom: 0.6rem;
-    letter-spacing: -0.5px;
-}}
-.hero p {{
-    color: rgba(255,255,255,0.95);
-    font-size: 1.15rem;
-    max-width: 720px;
-    margin: 0 auto;
-    line-height: 1.6;
-}}
-</style>
-""", unsafe_allow_html=True)
+def toggle_theme():
+    st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
+
+# --------------------------------------------------
+# SOC-GRADE COLORS (Mandiant-inspired)
+# --------------------------------------------------
+CYHAWK_RED = "#C41E3A"
+CYHAWK_RED_DARK = "#9A1529"
+
+def theme_config():
+    if st.session_state.theme == "dark":
+        return {
+            "bg": "#0D1117",
+            "bg_secondary": "#161B22",
+            "card": "#1C2128",
+            "card_hover": "#22272E",
+            "border": "#30363D",
+            "text": "#E6EDF3",
+            "text_secondary": "#8B949E",
+            "text_muted": "#6E7681",
+            "accent": CYHAWK_RED,
+            "success": "#238636",
+            "warning": "#9E6A03",
+            "danger": "#DA3633",
+            "template": "plotly_dark"
+        }
+    return {
+        "bg": "#FFFFFF",
+        "bg_secondary": "#F6F8FA",
+        "card": "#FFFFFF",
+        "card_hover": "#F6F8FA",
+        "border": "#D0D7DE",
+        "text": "#1F2328",
+        "text_secondary": "#636C76",
+        "text_muted": "#8C959F",
+        "accent": CYHAWK_RED,
+        "success": "#1A7F37",
+        "warning": "#9A6700",
+        "danger": "#D1242F",
+        "template": "plotly_white"
+    }
+
+C = theme_config()
 
 # -------------------------------------------------------------------
 # HEADER
