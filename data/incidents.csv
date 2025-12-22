@@ -582,3 +582,18 @@ date,actor,country,threat_type,sector,severity,source
 2025-02-27,Negat1ve,Ghana,Defacement,Government,Medium,Telegram
 2025-02-28,MIYAK000,Mozambique,Access,Government,Critical,Dark Web
 2025-02-28,AfricanGoddess,Uganda,Access,Government,Critical,Dark Web
+2025-11-09,Richard2002,Nigeria,Database,Education,Critical,Dark Web
+2025-12-05,Nova,Kenya,Ransomware,Health,Critical,Leak Site
+2025-12-06,Qilin,Ghana,Ransomware,Beverage,Critical,Leak Site
+2025-12-07,Lockbit,South Africa,Ransomware,Government,Critical,Leak Site
+2025-12-09,evorax,Nigeria,Database,Education,Critical,Dark Web
+2025-12-11,Richard2002,Egypt,Database,Financial Services,Critical,Dark Web
+2025-12-12,Kazu,Nigeria,Ransomware,Financial Services,Critical,Leak Site
+2025-12-13,Autogarant,Algeria,Database,Logistics,High,Dark Web
+2025-12-15,Breachlaboratory,Egypt,Database,E-Commerce,Critical,Dark Web
+2025-12-15,Ashleywood2022,Tunisia,Database,Education,Critical,Dark Web
+2025-12-16,BigBrother,Egypt,Database,Government,Critical,Dark Web
+2025-12-16,BigBrother,Egypt,Database,Government,Critical,Dark Web
+2025-12-16,BigBrother,Egypt,Database,Government,Critical,Dark Web
+2025-12-16,Breachlaboratory,Sudan,Database,Education,Critical,Dark Web
+2025-12-16,Autogarant,Botswana,Database,Technology,Critical,Dark Web
