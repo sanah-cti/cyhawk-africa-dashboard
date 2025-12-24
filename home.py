@@ -897,67 +897,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Charts Row 1
-col1, col2 = st.columns(2)
 
-with col1:
-    st.markdown(f"""
-    <div class="chart-card">
-        <div class="chart-header">
-            <h3 class="chart-title">Threat Classification</h3>
-            <span class="live-badge">LIVE</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    threat_counts = filtered_df['threat_type'].value_counts().reset_index()
-    threat_counts.columns = ['Threat Type', 'Count']
-    
-    fig = px.bar(
-        threat_counts,
-        x='Count',
-        y='Threat Type',
-        orientation='h',
-        template=C["template"],
-        color='Count',
-        color_continuous_scale=[[0, C['card']], [1, C['accent']]]
-    )
-    fig.update_layout(
-        height=300,
-        margin=dict(l=0, r=0, t=0, b=0),
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=C['text'], size=12),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False),
-        dragmode=False
-    )
-    fig.update_traces(marker_line_width=0)
-    st.plotly_chart(fig, use_container_width=True, key="threat_bar", config={'displayModeBar': False, 'staticPlot': False})
-
-with col2:
-    st.markdown(f"""
-    <div class="chart-card">
-        <div class="chart-header">
-            <h3 class="chart-title">Severity Analysis</h3>
-            <span class="live-badge">LIVE</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    severity_counts = filtered_df['severity'].value_counts().reset_index()
-    severity_counts.columns = ['Severity', 'Count']
-    
-    color_map = {'High': C['danger'], 'Medium': C['warning'], 'Low': C['success']}
-    fig = px.bar(
-        severity_counts,
-        x='Severity',
-        y='Count',
-        template=C["template"],
-        color='Severity',
-        color_discrete_map=color_map
-    )
     fig.update_layout(
         height=300,
         margin=dict(l=0, r=0, t=0, b=0),
