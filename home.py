@@ -1098,9 +1098,63 @@ with col2:
 col1, col2 = st.columns(2)
 
 # ============================================================================
-# COLORFUL AFRICA THREAT MAP - VIBRANT GRADIENT VERSION
-# Replace the fig_map creation section (the go.Figure part) with this
+# FIX FOR DUPLICATE KEY ERROR
 # ============================================================================
+
+# PROBLEM:
+# You have two country visualizations:
+# 1. Old bar chart (line ~930) with key="country_bar"
+# 2. New Africa map (line ~1213) with key="africa_map"
+
+# SOLUTION:
+# Replace the OLD country bar chart section (lines ~897-930) 
+# with the NEW Africa map code
+
+# ============================================================================
+# STEP-BY-STEP FIX:
+# ============================================================================
+
+# STEP 1: Find this section in your home.py (around line 897-930):
+"""
+with col1:
+    st.markdown(f'''
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3 class="chart-title">Top Targeted Countries</h3>
+            <span class="chart-badge">Geographic Hotspots</span>
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+    
+    country_counts = filtered_df['country'].value_counts().head(10).reset_index()
+    country_counts.columns = ['Country', 'Count']
+    
+    fig = px.bar(
+        country_counts,
+        x='Count',
+        y='Country',
+        orientation='h',
+        template=C["template"],
+        color='Count',
+        color_continuous_scale=[[0, C['card']], [1, C['accent']]]
+    )
+    fig.update_layout(
+        height=300,
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color=C['text'], size=12),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False),
+        dragmode=False
+    )
+    st.plotly_chart(fig, use_container_width=True, key="country_bar", config={'displayModeBar': False})
+"""
+
+# STEP 2: DELETE the entire section above (lines 897-930)
+
+# STEP 3: REPLACE with the Africa map code below:
 
 with col1:
     st.markdown(f"""
@@ -1183,26 +1237,25 @@ with col1:
     map_df = map_df.dropna(subset=['iso_alpha'])
     
     if len(map_df) > 0:
-        # COLORFUL GRADIENT - Rainbow spectrum based on attack intensity
+        # COLORFUL GRADIENT - Cyber Security Theme
         fig_map = go.Figure(data=go.Choropleth(
             locations=map_df['iso_alpha'],
             z=map_df['Attacks'],
             text=map_df['hover_text'],
             hovertemplate='%{text}<extra></extra>',
             
-            # 🌈 VIBRANT COLORFUL GRADIENT
+            # Vibrant color scale
             colorscale=[
-                [0.0, '#2E7D32'],   # Dark Green (Low attacks)
-                [0.15, '#43A047'],  # Green
-                [0.25, '#66BB6A'],  # Light Green
-                [0.35, '#FDD835'],  # Yellow
-                [0.45, '#FFB300'],  # Amber
-                [0.55, '#FB8C00'],  # Orange
-                [0.65, '#F4511E'],  # Deep Orange
-                [0.75, '#E53935'],  # Red
-                [0.85, '#C62828'],  # Dark Red
-                [1.0, '#880E4F']    # Purple-Red (Highest attacks)
-            ],
+           colorscale=[
+    [0.0, '#9C27B0'],   # Purple (Lowest)
+    [0.14, '#3F51B5'],  # Indigo
+    [0.28, '#2196F3'],  # Blue
+    [0.42, '#00BCD4'],  # Cyan
+    [0.57, '#4CAF50'],  # Green
+    [0.71, '#FFEB3B'],  # Yellow
+    [0.85, '#FF9800'],  # Orange
+    [1.0, '#F44336']    # Red (Highest)
+],
             
             autocolorscale=False,
             reversescale=False,
@@ -1259,9 +1312,18 @@ with col1:
             )
         )
         
-        st.plotly_chart(fig_map, use_container_width=True, key="africa_map", config={'displayModeBar': False})
+        # Use unique key "africa_threat_map" instead of "africa_map"
+        st.plotly_chart(
+            fig_map, 
+            use_container_width=True, 
+            key="africa_threat_map",  # ← UNIQUE KEY
+            config={
+                'displayModeBar': False,
+                'responsive': True
+            }
+        )
         
-        # Colorful legend with gradient explanation
+        # Color legend
         st.markdown(f"""
         <div style="
             padding: 1rem;
@@ -1270,29 +1332,31 @@ with col1:
             border: 1px solid {C['border']};
             margin-top: 0.5rem;
         ">
-            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 200px;">
-                    <p style="margin: 0; color: {C['text']}; font-size: 0.9rem; font-weight: 600;">
-                        💡 Hover over countries for detailed threat intelligence
-                    </p>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="color: {C['text_secondary']}; font-size: 0.85rem;">Color Guide:</span>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <p style="margin: 0; color: {C['text']}; font-size: 0.9rem; font-weight: 600;">
+                    💡 Hover over countries for threat intelligence
+                </p>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                    <span style="color: {C['text_secondary']}; font-size: 0.85rem; width: 100%; margin-bottom: 0.25rem;">Color Guide:</span>
                     <div style="display: flex; align-items: center; gap: 0.25rem;">
-                        <div style="width: 20px; height: 20px; background: #2E7D32; border-radius: 3px;"></div>
+                        <div style="width: 18px; height: 18px; background: #0D47A1; border-radius: 3px;"></div>
+                        <span style="color: {C['text_muted']}; font-size: 0.75rem;">Safe</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.25rem;">
+                        <div style="width: 18px; height: 18px; background: #00E676; border-radius: 3px;"></div>
                         <span style="color: {C['text_muted']}; font-size: 0.75rem;">Low</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.25rem;">
-                        <div style="width: 20px; height: 20px; background: #FDD835; border-radius: 3px;"></div>
-                        <span style="color: {C['text_muted']}; font-size: 0.75rem;">Medium</span>
+                        <div style="width: 18px; height: 18px; background: #FFEB3B; border-radius: 3px;"></div>
+                        <span style="color: {C['text_muted']}; font-size: 0.75rem;">Moderate</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.25rem;">
-                        <div style="width: 20px; height: 20px; background: #F4511E; border-radius: 3px;"></div>
+                        <div style="width: 18px; height: 18px; background: #FF9800; border-radius: 3px;"></div>
                         <span style="color: {C['text_muted']}; font-size: 0.75rem;">High</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.25rem;">
-                        <div style="width: 20px; height: 20px; background: #880E4F; border-radius: 3px;"></div>
-                        <span style="color: {C['text_muted']}; font-size: 0.75rem;">Critical</span>
+                        <div style="width: 18px; height: 18px; background: #C41E3A; border-radius: 3px;"></div>
+                        <span style="color: {C['text_muted']}; font-size: 0.75rem;">CRITICAL</span>
                     </div>
                 </div>
             </div>
@@ -1300,141 +1364,9 @@ with col1:
         """, unsafe_allow_html=True)
     else:
         st.info("No African country data available in current filter selection")
-        threat_list = "<br>".join([
-            f"  • {threat}: {count}" 
-            for threat, count in threat_types.items()
-        ])
-        
-        map_data.append({
-            'Country': country,
-            'Attacks': total_attacks,
-            'Top_Actors': actor_list if actor_list else '  • No data',
-            'Threat_Types': threat_list if threat_list else '  • No data'
-        })
-    
-    map_df = pd.DataFrame(map_data)
-    
-    # Create detailed hover text
-    map_df['hover_text'] = map_df.apply(
-        lambda row: (
-            f"<b>{row['Country']}</b><br>"
-            f"<b>Total Attacks:</b> {row['Attacks']}<br><br>"
-            f"<b>Top Threat Actors:</b><br>{row['Top_Actors']}<br><br>"
-            f"<b>Primary Threats:</b><br>{row['Threat_Types']}"
-        ),
-        axis=1
-    )
-    
-    # ISO-3 country codes for African countries
-    country_iso_map = {
-        'Nigeria': 'NGA', 'South Africa': 'ZAF', 'Kenya': 'KEN', 'Egypt': 'EGY',
-        'Ghana': 'GHA', 'Morocco': 'MAR', 'Tanzania': 'TZA', 'Ethiopia': 'ETH',
-        'Uganda': 'UGA', 'Algeria': 'DZA', 'Tunisia': 'TUN', 'Zimbabwe': 'ZWE',
-        'Mozambique': 'MOZ', 'Zambia': 'ZMB', 'Senegal': 'SEN', 'Rwanda': 'RWA',
-        'Cameroon': 'CMR', 'Ivory Coast': 'CIV', "Cote d'Ivoire": 'CIV',
-        'Angola': 'AGO', 'Sudan': 'SDN', 'Libya': 'LBY', 'Mali': 'MLI',
-        'Malawi': 'MWI', 'Niger': 'NER', 'Somalia': 'SOM', 'Congo': 'COG',
-        'Botswana': 'BWA', 'Gabon': 'GAB', 'Mauritius': 'MUS', 'Namibia': 'NAM',
-        'Madagascar': 'MDG', 'Burkina Faso': 'BFA', 'Guinea': 'GIN',
-        'Benin': 'BEN', 'Burundi': 'BDI', 'Togo': 'TGO', 'Sierra Leone': 'SLE',
-        'Liberia': 'LBR', 'Mauritania': 'MRT', 'Eritrea': 'ERI', 'Gambia': 'GMB',
-        'Lesotho': 'LSO', 'Equatorial Guinea': 'GNQ', 'Djibouti': 'DJI',
-        'Eswatini': 'SWZ', 'Swaziland': 'SWZ', 'Cape Verde': 'CPV',
-        'Seychelles': 'SYC', 'Central African Republic': 'CAF', 'Chad': 'TCD',
-        'South Sudan': 'SSD', 'Comoros': 'COM', 'Sao Tome and Principe': 'STP',
-        'DR Congo': 'COD', 'Democratic Republic of Congo': 'COD'
-    }
-    
-    # Add ISO codes
-    map_df['iso_alpha'] = map_df['Country'].map(country_iso_map)
-    
-    # Remove countries without ISO codes (non-African or unrecognized)
-    map_df = map_df.dropna(subset=['iso_alpha'])
-    
-    if len(map_df) > 0:
-        # Create the Africa choropleth map
-        fig_map = go.Figure(data=go.Choropleth(
-            locations=map_df['iso_alpha'],
-            z=map_df['Attacks'],
-            text=map_df['hover_text'],
-            hovertemplate='%{text}<extra></extra>',
-            colorscale=[
-                [0, C['card']],
-                [0.3, '#8B1538'],
-                [0.6, C['accent']],
-                [1.0, '#FF6B8A']
-            ],
-            autocolorscale=False,
-            reversescale=False,
-            marker_line_color=C['border'],
-            marker_line_width=0.5,
-            colorbar=dict(
-                title="Attacks",
-                thickness=10,
-                len=0.7,
-                bgcolor='rgba(0,0,0,0)',
-                tickfont=dict(color=C['text'], size=10),
-                titlefont=dict(color=C['text'], size=11)
-            )
-        ))
-        
-        # Focus on Africa
-        fig_map.update_geos(
-            scope='africa',
-            projection_type='natural earth',
-            showframe=False,
-            showcoastlines=True,
-            coastlinecolor=C['border'],
-            showcountries=True,
-            countrycolor=C['border'],
-            showland=True,
-            landcolor=C['card'],
-            bgcolor=C['bg'],
-            showlakes=False,
-            showocean=True,
-            oceancolor=C['bg_secondary']
-        )
-        
-        fig_map.update_layout(
-            height=450,
-            margin=dict(l=0, r=0, t=0, b=0),
-            paper_bgcolor='rgba(0,0,0,0)',
-            geo=dict(
-                bgcolor='rgba(0,0,0,0)',
-                lakecolor='rgba(0,0,0,0)'
-            ),
-            font=dict(color=C['text'], size=11),
-            dragmode=False,
-            hoverlabel=dict(
-                bgcolor=C['card'],
-                font_size=12,
-                font_color=C['text'],
-                bordercolor=C['accent']
-            )
-        )
-        
-        st.plotly_chart(fig_map, use_container_width=True, key="africa_map", config={'displayModeBar': False})
-        
-        # Add helpful legend below map
-        st.markdown(f"""
-        <div style="
-            padding: 0.75rem;
-            background: {C['card']};
-            border-radius: 8px;
-            border-left: 3px solid {C['accent']};
-            margin-top: 0.5rem;
-        ">
-            <p style="margin: 0; color: {C['text_secondary']}; font-size: 0.85rem;">
-                💡 <b>Hover over countries</b> to see top 5 threat actors and primary attack types
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.info("No African country data available in current filter selection")
 
-# The rest of your code continues here (col2 with Top Ransomware Groups, etc.)
-
-with col2:
+# IMPORTANT: Make sure you DELETED the old country_bar chart above!
+# There should be NO other chart with key="country_bar" in your file.
     st.markdown(f"""
     <div class="chart-card">
         <div class="chart-header">
