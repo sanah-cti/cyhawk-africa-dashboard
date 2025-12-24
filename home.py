@@ -409,12 +409,6 @@ st.markdown(f"""
 }}
 
 /* Mobile Responsive */
-# ============================================================================
-# ENHANCED MOBILE-RESPONSIVE CSS
-# Add this to your CSS section (REPLACE the existing @media section around line 412)
-# ============================================================================
-
-"""
 /* ============================================
    MOBILE & TABLET RESPONSIVE STYLES
    ============================================ */
@@ -651,7 +645,8 @@ st.markdown(f"""
         box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
     }}
 }}
-"""
+</style>
+""", unsafe_allow_html=True)
 # --------------------------------------------------
 # DATA LOADING
 # --------------------------------------------------
@@ -1239,23 +1234,21 @@ with col1:
     if len(map_df) > 0:
         # COLORFUL GRADIENT - Cyber Security Theme
         fig_map = go.Figure(data=go.Choropleth(
-            locations=map_df['iso_alpha'],
             z=map_df['Attacks'],
             text=map_df['hover_text'],
             hovertemplate='%{text}<extra></extra>',
             
             # Vibrant color scale
             colorscale=[
-           colorscale=[
-    [0.0, '#9C27B0'],   # Purple (Lowest)
-    [0.14, '#3F51B5'],  # Indigo
-    [0.28, '#2196F3'],  # Blue
-    [0.42, '#00BCD4'],  # Cyan
-    [0.57, '#4CAF50'],  # Green
-    [0.71, '#FFEB3B'],  # Yellow
-    [0.85, '#FF9800'],  # Orange
-    [1.0, '#F44336']    # Red (Highest)
-],
+                [0.0, '#9C27B0'],   # Purple (Lowest)
+                [0.14, '#3F51B5'],  # Indigo
+                [0.28, '#2196F3'],  # Blue
+                [0.42, '#00BCD4'],  # Cyan
+                [0.57, '#4CAF50'],  # Green
+                [0.71, '#FFEB3B'],  # Yellow
+                [0.85, '#FF9800'],  # Orange
+                [1.0, '#F44336']    # Red (Highest)
+            ],
             
             autocolorscale=False,
             reversescale=False,
