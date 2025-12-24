@@ -1,1443 +1,1151 @@
 import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
 import pandas as pd
-import os
+import plotly.graph_objects as go
+import plotly.express as px
+from datetime import datetime, timedelta
 import random
-from datetime import timedelta
-import base64
 
-# --------------------------------------------------
-# PAGE CONFIG
-# --------------------------------------------------
+# Page config
 st.set_page_config(
-    page_title="CyHawk Africa | Threat Intelligence Platform",
-    page_icon="assets/favicon.ico",
+    page_title="CyHawk Africa - Threat Intelligence Platform",
+    page_icon="🛡️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# --------------------------------------------------
-# THEME STATE
-# --------------------------------------------------
-if "theme" not in st.session_state:
-    st.session_state.theme = "dark"
+# Initialize session state for theme
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'dark'
 
 def toggle_theme():
-    st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
+    """Toggle between dark and light mode"""
+    st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
 
-# --------------------------------------------------
-# SOC-GRADE COLORS (Mandiant-inspired)
-# --------------------------------------------------
-CYHAWK_RED = "#C41E3A"
-CYHAWK_RED_DARK = "#9A1529"
-
-def theme_config():
-    if st.session_state.theme == "dark":
-        return {
-            "bg": "#0D1117",
-            "bg_secondary": "#161B22",
-            "card": "#1C2128",
-            "card_hover": "#22272E",
-            "border": "#30363D",
-            "text": "#E6EDF3",
-            "text_secondary": "#8B949E",
-            "text_muted": "#6E7681",
-            "accent": CYHAWK_RED,
-            "success": "#238636",
-            "warning": "#9E6A03",
-            "danger": "#DA3633",
-            "template": "plotly_dark"
-        }
-    return {
-        "bg": "#FFFFFF",
-        "bg_secondary": "#F6F8FA",
-        "card": "#FFFFFF",
-        "card_hover": "#F6F8FA",
-        "border": "#D0D7DE",
-        "text": "#1F2328",
-        "text_secondary": "#636C76",
-        "text_muted": "#8C959F",
-        "accent": CYHAWK_RED,
-        "success": "#1A7F37",
-        "warning": "#9A6700",
-        "danger": "#D1242F",
-        "template": "plotly_white"
+# Theme colors
+THEMES = {
+    'dark': {
+        'bg': '#000000',
+        'bg_elevated': '#0a0a0a',
+        'bg_card': '#111111',
+        'border': '#1f1f1f',
+        'text': '#ffffff',
+        'text_dim': '#999999',
+        'text_subtle': '#666666',
+        'cyhawk_red': '#C41E3A',
+        'red_glow': 'rgba(196, 30, 58, 0.5)',
+        'success': '#00ff00',
+    },
+    'light': {
+        'bg': '#ffffff',
+        'bg_elevated': '#f8f9fa',
+        'bg_card': '#f0f0f0',
+        'border': '#e0e0e0',
+        'text': '#000000',
+        'text_dim': '#666666',
+        'text_subtle': '#999999',
+        'cyhawk_red': '#C41E3A',
+        'red_glow': 'rgba(196, 30, 58, 0.3)',
+        'success': '#27ae60',
     }
+}
 
-C = theme_config()
+# Get current theme
+C = THEMES[st.session_state.theme]
 
-# --------------------------------------------------
-# ENTERPRISE-GRADE CSS
-# --------------------------------------------------
+# Custom CSS - V3 Modern Minimalist Design
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-* {{
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    -webkit-font-smoothing: antialiased;
-}}
-
-.main {{
-    background-color: {C['bg']};
-    padding: 0;
-}}
-
-.stApp {{
-    background: {C['bg']};
-}}
-
-#MainMenu, footer, header {{ visibility: hidden; }}
-
-/* Top Navigation Bar */
-.nav-bar {{
-    background: {C['card']};
-    border-bottom: 1px solid {C['border']};
-    padding: 0 2rem;
-    margin: -6rem -6rem 0 -6rem;
-    height: 70px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}}
-
-.nav-brand {{
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}}
-
-.nav-logo {{
-    width: 45px;
-    height: 45px;
-    border-radius: 8px;
-}}
-
-.nav-title {{
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: {C['text']};
-    line-height: 1.2;
-}}
-
-.nav-subtitle {{
-    margin: 0;
-    font-size: 0.75rem;
-    color: {C['text_muted']};
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 500;
-}}
-
-.nav-actions {{
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-}}
-
-/* Status Indicators */
-.status-indicator {{
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: {C['bg_secondary']};
-    border-radius: 6px;
-    font-size: 0.875rem;
-    color: {C['text_secondary']};
-}}
-
-.status-dot {{
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: {C['success']};
-    animation: pulse 2s infinite;
-    box-shadow: 0 0 0 0 rgba(35, 134, 54, 0.7);
-}}
-
-@keyframes pulse {{
-    0% {{
-        box-shadow: 0 0 0 0 rgba(35, 134, 54, 0.7);
-    }}
-    50% {{
-        box-shadow: 0 0 0 8px rgba(35, 134, 54, 0);
-    }}
-    100% {{
-        box-shadow: 0 0 0 0 rgba(35, 134, 54, 0);
-    }}
-}}
-
-.last-refresh {{
-    font-size: 0.75rem;
-    color: {C['text_muted']};
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}}
-
-.refresh-icon {{
-    width: 12px;
-    height: 12px;
-    border: 2px solid {C['text_muted']};
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 3s linear infinite;
-}}
-
-@keyframes spin {{
-    0% {{ transform: rotate(0deg); }}
-    100% {{ transform: rotate(360deg); }}
-}}
-
-.activity-indicator {{
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-}}
-
-.activity-bar {{
-    width: 2px;
-    height: 12px;
-    background: {C['accent']};
-    animation: activity 1.5s ease-in-out infinite;
-}}
-
-.activity-bar:nth-child(1) {{ animation-delay: 0s; }}
-.activity-bar:nth-child(2) {{ animation-delay: 0.2s; }}
-.activity-bar:nth-child(3) {{ animation-delay: 0.4s; }}
-.activity-bar:nth-child(4) {{ animation-delay: 0.6s; }}
-
-@keyframes activity {{
-    0%, 100% {{ height: 6px; opacity: 0.3; }}
-    50% {{ height: 16px; opacity: 1; }}
-}}
-
-/* Content Container */
-.content-container {{
-    padding: 2rem;
-    max-width: 1600px;
-    margin: 0 auto;
-}}
-
-/* Metric Cards */
-.metrics-grid {{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-}}
-
-.metric-card {{
-    background: {C['card']};
-    border: 1px solid {C['border']};
-    border-radius: 8px;
-    padding: 1.5rem;
-    transition: all 0.2s ease;
-}}
-
-.metric-card:hover {{
-    background: {C['card_hover']};
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}}
-
-.metric-label {{
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: {C['text_secondary']};
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.5rem;
-}}
-
-.metric-value {{
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: {C['accent']};
-    line-height: 1;
-    margin-bottom: 0.25rem;
-}}
-
-.metric-change {{
-    font-size: 0.875rem;
-    color: {C['text_muted']};
-}}
-
-/* Chart Cards */
-.chart-card {{
-    background: {C['card']};
-    border: 1px solid {C['border']};
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    transition: border-color 0.2s ease;
-}}
-
-.chart-card:hover {{
-    border-color: {C['accent']};
-}}
-
-.chart-header {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid {C['border']};
-}}
-
-.chart-title {{
-    font-size: 1rem;
-    font-weight: 600;
-    color: {C['text']};
-    margin: 0;
-}}
-
-.chart-badge {{
-    font-size: 0.75rem;
-    padding: 0.25rem 0.75rem;
-    background: {C['bg_secondary']};
-    border-radius: 12px;
-    color: {C['text_secondary']};
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}}
-
-.live-badge {{
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-    padding: 0.25rem 0.75rem;
-    background: rgba(35, 134, 54, 0.1);
-    border: 1px solid {C['success']};
-    border-radius: 12px;
-    color: {C['success']};
-    font-weight: 600;
-}}
-
-.live-badge::before {{
-    content: '';
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: {C['success']};
-    animation: pulse-small 2s infinite;
-}}
-
-@keyframes pulse-small {{
-    0%, 100% {{ opacity: 1; }}
-    50% {{ opacity: 0.3; }}
-}}
-
-/* Sidebar Styling */
-[data-testid="stSidebar"] {{
-    background: {C['card']};
-    border-right: 1px solid {C['border']};
-    padding-top: 1rem;
-}}
-
-[data-testid="stSidebar"] .stMarkdown {{
-    color: {C['text']};
-}}
-
-.sidebar-section {{
-    background: transparent;
-    border: none;
-    padding: 0;
-    margin-bottom: 1.5rem;
-}}
-
-.sidebar-title {{
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: {C['text_muted']};
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid {C['border']};
-}}
-
-/* Filter Controls */
-.stSelectbox, .stMultiSelect {{
-    margin-bottom: 0.75rem;
-}}
-
-.stSelectbox label, .stMultiSelect label {{
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: {C['text']};
-    margin-bottom: 0.5rem;
-}}
-
-/* Buttons */
-.stButton > button {{
-    background: {C['accent']};
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 0.625rem 1.25rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    transition: all 0.2s ease;
-    width: 100%;
-}}
-
-.stButton > button:hover {{
-    background: {CYHAWK_RED_DARK};
-    box-shadow: 0 4px 12px rgba(196, 30, 58, 0.3);
-}}
-
-/* Disable chart dragging */
-.js-plotly-plot .plotly .modebar {{
-    display: none !important;
-}}
-
-.js-plotly-plot .plotly .cursor-crosshair {{
-    cursor: default !important;
-}}
-
-/* Mobile Responsive */
-/* ============================================
-   MOBILE & TABLET RESPONSIVE STYLES
-   ============================================ */
-
-/* Mobile First - Small devices (phones, 320px - 768px) */
-@media (max-width: 768px) {{
-    /* Navigation Bar */
-    .nav-bar {{
-        padding: 0 1rem !important;
-        height: auto !important;
-        min-height: 60px !important;
-        flex-direction: column !important;
-        gap: 0.75rem !important;
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
+    /* Global Styles */
+    .stApp {{
+        background: {C['bg']};
+        color: {C['text']};
     }}
     
-    .nav-brand {{
-        width: 100% !important;
-        justify-content: center !important;
+    /* Hide Streamlit default elements */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    header {{visibility: hidden;}}
+    
+    /* Subtle grid background */
+    .stApp::before {{
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image: 
+            linear-gradient({C['red_glow']} 1px, transparent 1px),
+            linear-gradient(90deg, {C['red_glow']} 1px, transparent 1px);
+        background-size: 50px 50px;
+        z-index: -1;
+        opacity: 0.3;
     }}
     
-    .nav-logo {{
-        width: 35px !important;
-        height: 35px !important;
+    /* Header */
+    .main-header {{
+        background: {C['bg_elevated']};
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid {C['border']};
+        padding: 1rem 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        margin: -6rem -6rem 2rem -6rem;
     }}
     
-    .nav-title {{
-        font-size: 1rem !important;
+    .logo-section {{
+        display: flex;
+        align-items: center;
+        gap: 1rem;
     }}
     
-    .nav-subtitle {{
-        font-size: 0.65rem !important;
+    .logo-container {{
+        width: 45px;
+        height: 45px;
+        background: {C['cyhawk_red']};
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 20px {C['red_glow']};
+        overflow: hidden;
     }}
     
-    .nav-actions {{
-        width: 100% !important;
-        justify-content: center !important;
-        flex-wrap: wrap !important;
+    .logo-container img {{
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }}
     
-    /* Status indicators */
+    .brand-text h1 {{
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: {C['text']};
+        letter-spacing: -0.5px;
+        margin: 0;
+    }}
+    
+    .brand-text h1 .brand-highlight {{
+        color: {C['cyhawk_red']};
+        font-weight: 700;
+    }}
+    
+    .brand-text p {{
+        font-size: 0.75rem;
+        color: {C['text_dim']};
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }}
+    
+    .header-nav {{
+        display: flex;
+        gap: 2rem;
+        align-items: center;
+    }}
+    
+    .nav-item {{
+        color: {C['text_dim']};
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: color 0.2s;
+        text-decoration: none;
+    }}
+    
+    .nav-item:hover {{
+        color: {C['text']};
+    }}
+    
     .status-indicator {{
-        padding: 0.4rem 0.75rem !important;
-        font-size: 0.75rem !important;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: rgba(0, 255, 0, 0.1);
+        border: 1px solid {C['success']};
+        border-radius: 20px;
     }}
     
-    /* Content Container */
-    .content-container {{
-        padding: 1rem !important;
-        margin-top: 1rem !important;
+    .status-dot {{
+        width: 8px;
+        height: 8px;
+        background: {C['success']};
+        border-radius: 50%;
+        box-shadow: 0 0 10px {C['success']};
+        animation: pulse 2s infinite;
     }}
     
-    /* Metrics Grid - Stack vertically on mobile */
+    @keyframes pulse {{
+        0%, 100% {{ opacity: 1; }}
+        50% {{ opacity: 0.5; }}
+    }}
+    
+    .theme-toggle {{
+        background: {C['bg_card']};
+        border: 1px solid {C['border']};
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        color: {C['text_dim']};
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }}
+    
+    .theme-toggle:hover {{
+        border-color: {C['cyhawk_red']};
+        color: {C['text']};
+    }}
+    
+    /* Hero Section */
+    .hero-section {{
+        margin-bottom: 4rem;
+    }}
+    
+    .hero-label {{
+        color: {C['cyhawk_red']};
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }}
+    
+    .hero-label::before {{
+        content: '';
+        width: 30px;
+        height: 2px;
+        background: {C['cyhawk_red']};
+    }}
+    
+    .hero-title {{
+        font-size: 3.5rem;
+        font-weight: 700;
+        color: {C['text']};
+        margin-bottom: 1rem;
+        letter-spacing: -2px;
+        line-height: 1.1;
+    }}
+    
+    .hero-subtitle {{
+        font-size: 1.25rem;
+        color: {C['text_dim']};
+        font-weight: 400;
+        max-width: 600px;
+        margin-bottom: 2rem;
+    }}
+    
+    /* Map Container */
+    .map-container {{
+        background: linear-gradient(135deg, {C['bg_card']} 0%, {C['bg_elevated']} 100%);
+        border: 1px solid {C['border']};
+        border-radius: 24px;
+        padding: 4rem;
+        min-height: 650px;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }}
+    
+    /* Map Stats Overlay */
+    .map-stats-grid {{
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }}
+    
+    .map-stat-card {{
+        background: {C['bg_card']};
+        backdrop-filter: blur(20px);
+        border: 1px solid {C['border']};
+        border-radius: 16px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }}
+    
+    .map-stat-card:hover {{
+        border-color: {C['cyhawk_red']};
+        transform: translateY(-4px);
+    }}
+    
+    .map-stat-value {{
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: {C['cyhawk_red']};
+        margin-bottom: 0.25rem;
+    }}
+    
+    .map-stat-label {{
+        font-size: 0.85rem;
+        color: {C['text_dim']};
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }}
+    
+    /* Legend */
+    .legend-container {{
+        display: flex;
+        gap: 3rem;
+        margin-top: 2rem;
+        padding: 1.5rem 0;
+        border-top: 1px solid {C['border']};
+        flex-wrap: wrap;
+    }}
+    
+    .legend-item {{
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }}
+    
+    .legend-dot {{
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }}
+    
+    .legend-text {{
+        font-size: 0.9rem;
+        color: {C['text_dim']};
+        font-weight: 500;
+    }}
+    
+    /* Metrics Grid */
     .metrics-grid {{
-        grid-template-columns: 1fr !important;
-        gap: 1rem !important;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 4rem;
     }}
     
     .metric-card {{
-        padding: 1.25rem !important;
+        background: {C['bg_card']};
+        border: 1px solid {C['border']};
+        border-radius: 20px;
+        padding: 2rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
     }}
     
-    .metric-value {{
-        font-size: 2rem !important;
+    .metric-card::before {{
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, {C['cyhawk_red']} 0%, transparent 100%);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }}
+    
+    .metric-card:hover {{
+        border-color: {C['cyhawk_red']};
+        transform: translateY(-4px);
+    }}
+    
+    .metric-card:hover::before {{
+        opacity: 1;
     }}
     
     .metric-label {{
-        font-size: 0.75rem !important;
+        font-size: 0.8rem;
+        color: {C['text_subtle']};
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 1rem;
+        font-weight: 600;
     }}
     
-    /* Chart Cards */
+    .metric-value {{
+        font-size: 3rem;
+        font-weight: 700;
+        color: {C['text']};
+        margin-bottom: 0.5rem;
+        line-height: 1;
+    }}
+    
+    .metric-change {{
+        font-size: 0.85rem;
+        color: {C['cyhawk_red']};
+        font-weight: 500;
+    }}
+    
+    /* Section Headers */
+    .section-header {{
+        margin-bottom: 2rem;
+    }}
+    
+    .section-label {{
+        color: {C['cyhawk_red']};
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 0.75rem;
+    }}
+    
+    .section-title {{
+        font-size: 2rem;
+        font-weight: 700;
+        color: {C['text']};
+        letter-spacing: -1px;
+    }}
+    
+    /* Charts Grid */
+    .charts-grid {{
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2rem;
+        margin-bottom: 4rem;
+    }}
+    
     .chart-card {{
-        margin-bottom: 1.5rem !important;
-        padding: 1rem !important;
+        background: {C['bg_card']};
+        border: 1px solid {C['border']};
+        border-radius: 20px;
+        padding: 2rem;
+        transition: all 0.3s ease;
+    }}
+    
+    .chart-card:hover {{
+        border-color: rgba(196, 30, 58, 0.5);
+    }}
+    
+    .chart-header {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
     }}
     
     .chart-title {{
-        font-size: 1rem !important;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: {C['text']};
     }}
     
     .chart-badge {{
-        font-size: 0.65rem !important;
-        padding: 0.25rem 0.5rem !important;
-    }}
-    
-    /* Streamlit Columns - Force stack on mobile */
-    .stColumn {{
-        width: 100% !important;
-        min-width: 100% !important;
-        margin-bottom: 1rem !important;
-    }}
-    
-    /* Charts - Optimize height for mobile */
-    .stPlotlyChart {{
-        min-height: 300px !important;
-        max-height: 400px !important;
-    }}
-    
-    /* Better touch targets */
-    button, .stButton > button {{
-        min-height: 44px !important;
-        min-width: 44px !important;
-        padding: 0.75rem 1.5rem !important;
-        font-size: 0.9rem !important;
-    }}
-    
-    /* Selectbox and inputs */
-    .stSelectbox, .stMultiSelect {{
-        min-height: 44px !important;
-    }}
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab"] {{
-        font-size: 0.85rem !important;
-        padding: 0.75rem 1rem !important;
-    }}
-    
-    /* Sidebar - Full width on mobile when expanded */
-    [data-testid="stSidebar"] {{
-        width: 100% !important;
-        max-width: 100% !important;
-    }}
-    
-    /* Hide less critical badges on very small screens */
-    .chart-badge {{
-        display: none !important;
+        background: rgba(196, 30, 58, 0.1);
+        color: {C['cyhawk_red']};
+        padding: 0.4rem 0.9rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }}
     
     /* Footer */
     .footer {{
-        padding: 1.5rem 1rem !important;
-        font-size: 0.75rem !important;
+        margin-top: 6rem;
+        padding: 3rem 0;
+        border-top: 1px solid {C['border']};
+        text-align: center;
     }}
     
-    /* Filters - Stack vertically */
-    .filter-section {{
-        flex-direction: column !important;
-        gap: 1rem !important;
+    .footer-logo {{
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: {C['text_dim']};
+        margin-bottom: 1rem;
     }}
     
-    /* Map legend - Better mobile layout */
-    .map-legend {{
-        flex-direction: column !important;
-        align-items: flex-start !important;
+    .footer-logo .brand-highlight {{
+        color: {C['cyhawk_red']};
     }}
     
-    /* Text readability */
-    p, span, div {{
-        word-wrap: break-word !important;
-        overflow-wrap: break-word !important;
+    .footer-links {{
+        display: flex;
+        gap: 2rem;
+        justify-content: center;
+        margin-bottom: 1rem;
     }}
     
-    /* Reduce animations on mobile for performance */
-    * {{
-        animation-duration: 0.3s !important;
-        transition-duration: 0.2s !important;
-    }}
-}}
-
-/* Tablet - Medium devices (tablets, 769px - 1024px) */
-@media (min-width: 769px) and (max-width: 1024px) {{
-    .metrics-grid {{
-        grid-template-columns: repeat(2, 1fr) !important;
+    .footer-link {{
+        color: {C['text_subtle']};
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: color 0.2s;
+        text-decoration: none;
     }}
     
-    .content-container {{
-        padding: 1.5rem !important;
+    .footer-link:hover {{
+        color: {C['text_dim']};
     }}
     
-    .chart-card {{
-        padding: 1.5rem !important;
+    .footer-credits {{
+        font-size: 0.75rem;
+        color: {C['text_subtle']};
+        margin-top: 1rem;
     }}
     
-    .stPlotlyChart {{
-        min-height: 350px !important;
-    }}
-}}
-
-/* Large tablets and small desktops (1025px - 1366px) */
-@media (min-width: 1025px) and (max-width: 1366px) {{
-    .metrics-grid {{
-        grid-template-columns: repeat(2, 1fr) !important;
-    }}
-    
-    .content-container {{
-        padding: 2rem !important;
-    }}
-}}
-
-/* Extra large screens (1367px+) */
-@media (min-width: 1367px) {{
-    .content-container {{
-        max-width: 1600px !important;
-        margin: 0 auto !important;
-    }}
-}}
-
-/* Landscape mode on mobile */
-@media (max-width: 768px) and (orientation: landscape) {{
-    .nav-bar {{
-        flex-direction: row !important;
-        padding: 0.5rem 1rem !important;
+    /* Responsive Design */
+    @media (max-width: 1024px) {{
+        .metrics-grid {{
+            grid-template-columns: repeat(2, 1fr);
+        }}
+        
+        .charts-grid {{
+            grid-template-columns: 1fr;
+        }}
+        
+        .map-stats-grid {{
+            grid-template-columns: repeat(2, 1fr);
+        }}
     }}
     
-    .stPlotlyChart {{
-        min-height: 250px !important;
-        max-height: 300px !important;
-    }}
-}}
-
-/* Print styles */
-@media print {{
-    .nav-bar, .status-indicator, button, .stButton {{
-        display: none !important;
+    @media (max-width: 768px) {{
+        .main-header {{
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+        }}
+        
+        .header-nav {{
+            width: 100%;
+            justify-content: space-between;
+        }}
+        
+        .hero-title {{
+            font-size: 2.5rem;
+        }}
+        
+        .metrics-grid {{
+            grid-template-columns: 1fr;
+        }}
+        
+        .map-stats-grid {{
+            grid-template-columns: 1fr;
+        }}
+        
+        .legend-container {{
+            gap: 1.5rem;
+        }}
     }}
     
-    .chart-card {{
-        page-break-inside: avoid !important;
+    /* Plotly chart customization */
+    .js-plotly-plot {{
+        background: transparent !important;
     }}
-}}
-
-/* Accessibility - Reduced motion */
-@media (prefers-reduced-motion: reduce) {{
-    * {{
-        animation: none !important;
-        transition: none !important;
+    
+    /* Remove Streamlit padding */
+    .block-container {{
+        padding-top: 1rem;
+        padding-bottom: 0rem;
+        max-width: 1400px;
     }}
-}}
-
-/* Dark mode specific adjustments for mobile */
-@media (max-width: 768px) and (prefers-color-scheme: dark) {{
-    .chart-card {{
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
-    }}
-}}
 </style>
 """, unsafe_allow_html=True)
-# --------------------------------------------------
-# DATA LOADING
-# --------------------------------------------------
-def generate_sample_data():
-    actors = ['APT28', 'Lazarus Group', 'Anonymous Sudan', 'DarkSide', 'REvil']
-    countries = ['Sudan', 'Morocco', 'Nigeria', 'Kenya', 'Egypt', 'South Africa']
-    threat_types = ['Ransomware', 'Data Breach', 'Phishing', 'Malware', 'DDoS']
-    sectors = ['Government', 'Healthcare', 'Finance', 'Telecommunications', 'Energy']
-    severities = ['High', 'Medium', 'Low']
-    sources = ['Dark Web', 'Telegram', 'OSINT', 'Partner Feed']
-    
-    data = []
-    start_date = datetime(2025, 1, 1)
-    
-    for i in range(200):
-        date = start_date + timedelta(days=random.randint(0, 350))
-        data.append({
-            'date': date,
-            'actor': random.choice(actors),
-            'country': random.choice(countries),
-            'threat_type': random.choice(threat_types),
-            'sector': random.choice(sectors),
-            'severity': random.choice(severities),
-            'source': random.choice(sources)
-        })
-    
-    return pd.DataFrame(data)
 
-@st.cache_data
-def load_data():
-    try:
-        csv_path = 'data/incidents.csv'
-        if os.path.exists(csv_path):
-            df = pd.read_csv(csv_path)
-            df['date'] = pd.to_datetime(df['date'], errors='coerce')
-            
-            # Drop rows with invalid dates
-            df = df.dropna(subset=['date'])
-            
-            # Fill NaN values in categorical columns with 'Unknown'
-            categorical_columns = ['actor', 'country', 'threat_type', 'sector', 'severity', 'source']
-            for col in categorical_columns:
-                if col in df.columns:
-                    df[col] = df[col].fillna('Unknown')
-                    # Convert to string to avoid mixed types
-                    df[col] = df[col].astype(str)
-            
-            # If dataframe is empty after cleaning, use sample data
-            if len(df) == 0:
-                df = generate_sample_data()
-        else:
-            df = generate_sample_data()
-    except Exception as e:
-        st.error(f"Error loading data: {str(e)}. Using sample data.")
-        df = generate_sample_data()
-    
-    df['year'] = df['date'].dt.year
-    df['month_name'] = df['date'].dt.strftime('%B')
-    df['quarter'] = df['date'].dt.quarter
-    return df
-
-df = load_data()
-
-# --------------------------------------------------
-# NAVIGATION BAR WITH LIVE SIGNALS
-# --------------------------------------------------
-import time
-
-# Calculate time since last refresh
-if 'last_refresh_time' not in st.session_state:
-    st.session_state.last_refresh_time = time.time()
-
-current_time = time.time()
-minutes_ago = int((current_time - st.session_state.last_refresh_time) / 60)
-
-def get_logo_base64():
-    logo_path = "assets/cyhawk_logo.png"
-    if os.path.exists(logo_path):
-        with open(logo_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    return None
-
-logo_b64 = get_logo_base64()
-
-col1, col2 = st.columns([3, 1])
-
-with col1:
-    if logo_b64:
-        logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="nav-logo">'
-    else:
-        logo_html = f'<div class="nav-logo" style="background:{C["accent"]};display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1.5rem;">C</div>'
-    
-    # Get current time for display
-    current_time_str = datetime.now().strftime("%H:%M")
-    
-    st.markdown(f"""
-    <div class="nav-bar">
-        <div class="nav-brand">
-            {logo_html}
-            <div>
-                <div class="nav-title">CyHawk Africa</div>
-                <div class="nav-subtitle">Threat Intelligence Platform</div>
-            </div>
+# Header
+st.markdown(f"""
+<div class="main-header">
+    <div class="logo-section">
+        <div class="logo-container">
+            <img src="app/static/assets/cyhawk_logo.png" alt="CyHawk Logo" onerror="this.style.display='none'">
         </div>
-        <div class="nav-actions">
-            <div class="status-indicator">
-                <div class="status-dot"></div>
-                <span>Live Monitoring</span>
-            </div>
-            <div class="status-indicator">
-                <div class="activity-indicator">
-                    <div class="activity-bar"></div>
-                    <div class="activity-bar"></div>
-                    <div class="activity-bar"></div>
-                    <div class="activity-bar"></div>
-                </div>
-                <span>{current_time_str} UTC</span>
-            </div>
-            <div class="last-refresh">
-                <div class="refresh-icon"></div>
-                <span>Updated {minutes_ago}m ago</span>
-            </div>
+        <div class="brand-text">
+            <h1><span class="brand-highlight">CyHawk</span> Africa</h1>
+            <p>Threat Intelligence Platform</p>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    <div class="header-nav">
+        <span class="nav-item">Dashboard</span>
+        <span class="nav-item">Threats</span>
+        <span class="nav-item">Analytics</span>
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span style="color: {C['text_dim']}; font-size: 0.85rem; font-weight: 500;">Live</span>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-with col2:
-    if st.button("🌙" if st.session_state.theme == "dark" else "☀️", key="theme_btn"):
+# Theme toggle button (in sidebar for functionality)
+with st.sidebar:
+    if st.button("🌓 Toggle Theme", key="theme_toggle", use_container_width=True):
         toggle_theme()
         st.rerun()
 
-# --------------------------------------------------
-# SIDEBAR FILTERS
-# --------------------------------------------------
-with st.sidebar:
-    st.markdown('<div class="sidebar-title">TIME PERIOD</div>', unsafe_allow_html=True)
+# Generate sample data
+def generate_sample_data():
+    """Generate sample threat data"""
     
-    filter_mode = st.selectbox(
-        "Filter Mode",
-        ["All Data", "Year", "Month", "Quarter"],
-        label_visibility="collapsed"
-    )
+    # African countries with ISO codes
+    countries = {
+        'Nigeria': 'NGA', 'South Africa': 'ZAF', 'Kenya': 'KEN', 'Egypt': 'EGY',
+        'Ghana': 'GHA', 'Ethiopia': 'ETH', 'Tanzania': 'TZA', 'Uganda': 'UGA',
+        'Morocco': 'MAR', 'Algeria': 'DZA', 'Sudan': 'SDN', 'Angola': 'AGO',
+        'Mozambique': 'MOZ', 'Madagascar': 'MDG', 'Cameroon': 'CMR', 'Ivory Coast': 'CIV',
+        'Niger': 'NER', 'Mali': 'MLI', 'Burkina Faso': 'BFA', 'Malawi': 'MWI',
+        'Zambia': 'ZMB', 'Senegal': 'SEN', 'Somalia': 'SOM', 'Chad': 'TCD',
+        'Zimbabwe': 'ZWE', 'Guinea': 'GIN', 'Rwanda': 'RWA', 'Benin': 'BEN',
+        'Tunisia': 'TUN', 'Burundi': 'BDI', 'South Sudan': 'SSD', 'Togo': 'TGO',
+        'Sierra Leone': 'SLE', 'Libya': 'LBY', 'Liberia': 'LBR', 'Mauritania': 'MRT',
+        'Central African Republic': 'CAF', 'Eritrea': 'ERI', 'Gambia': 'GMB',
+        'Botswana': 'BWA', 'Namibia': 'NAM', 'Gabon': 'GAB', 'Lesotho': 'LSO',
+        'Guinea-Bissau': 'GNB', 'Equatorial Guinea': 'GNQ', 'Mauritius': 'MUS',
+        'Eswatini': 'SWZ', 'Djibouti': 'DJI', 'Reunion': 'REU', 'Comoros': 'COM',
+        'Cape Verde': 'CPV', 'Sao Tome and Principe': 'STP', 'Seychelles': 'SYC'
+    }
     
-    filtered_df = df.copy()
+    # Generate threat data for countries
+    threat_data = []
+    for country, iso in countries.items():
+        attacks = random.randint(0, 50)
+        threat_data.append({
+            'country': country,
+            'iso_alpha': iso,
+            'attacks': attacks
+        })
     
-    if filter_mode == "Year":
-        years = sorted(df['year'].unique(), reverse=True)
-        selected_years = st.multiselect("Select Years", options=years, default=years)
-        filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
+    df = pd.DataFrame(threat_data)
     
-    elif filter_mode == "Month":
-        selected_year = st.selectbox("Select Year", options=sorted(df['year'].unique(), reverse=True))
-        months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-        selected_months = st.multiselect("Select Months", options=months, default=months)
-        filtered_df = filtered_df[(filtered_df['year'] == selected_year) & (filtered_df['month_name'].isin(selected_months))]
+    # Generate threat actors
+    actors = ['LockBit', 'BlackCat', 'Play', 'Cl0p', 'Royal', 'BianLian', 'Medusa', 
+              'Akira', 'NoEscape', '8Base', 'Rhysida', 'Hunters International']
     
-    elif filter_mode == "Quarter":
-        selected_year = st.selectbox("Select Year", options=sorted(df['year'].unique(), reverse=True))
-        quarters = sorted(df[df['year'] == selected_year]['quarter'].unique())
-        selected_quarters = st.multiselect("Select Quarters", options=quarters, default=quarters, format_func=lambda x: f"Q{x}")
-        filtered_df = filtered_df[(filtered_df['year'] == selected_year) & (filtered_df['quarter'].isin(selected_quarters))]
+    actor_data = []
+    for actor in actors:
+        actor_data.append({
+            'actor': actor,
+            'attacks': random.randint(10, 80),
+            'countries_affected': random.randint(3, 15)
+        })
     
-    st.markdown('<div style="margin-top: 2rem;"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-title">FILTERS</div>', unsafe_allow_html=True)
+    actors_df = pd.DataFrame(actor_data).sort_values('attacks', ascending=False).head(10)
     
-    selected_threat_types = st.multiselect(
-        "Threat Type",
-        options=sorted([t for t in df['threat_type'].unique() if pd.notna(t)]),
-        default=list(df['threat_type'].unique())
-    )
+    # Generate timeline data
+    dates = pd.date_range(end=datetime.now(), periods=30, freq='D')
+    timeline_data = []
+    for date in dates:
+        timeline_data.append({
+            'date': date,
+            'Ransomware': random.randint(5, 25),
+            'Phishing': random.randint(10, 40),
+            'DDoS': random.randint(3, 20),
+            'Data Breach': random.randint(2, 15)
+        })
     
-    selected_severity = st.multiselect(
-        "Severity Level",
-        options=sorted([s for s in df['severity'].unique() if pd.notna(s)]),
-        default=list(df['severity'].unique())
-    )
+    timeline_df = pd.DataFrame(timeline_data)
     
-    selected_sectors = st.multiselect(
-        "Industry Sector",
-        options=sorted([sec for sec in df['sector'].unique() if pd.notna(sec)]),
-        default=list(df['sector'].unique())
-    )
+    # Generate industry data
+    industries = ['Financial Services', 'Healthcare', 'Government', 'Energy', 
+                  'Telecommunications', 'Education', 'Manufacturing', 'Retail']
     
-    filtered_df = filtered_df[
-        (filtered_df['threat_type'].isin(selected_threat_types)) &
-        (filtered_df['severity'].isin(selected_severity)) &
-        (filtered_df['sector'].isin(selected_sectors))
-    ]
+    industry_data = []
+    for industry in industries:
+        industry_data.append({
+            'industry': industry,
+            'attacks': random.randint(20, 100)
+        })
     
-    st.markdown('<div style="margin-top: 2rem;"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-title">ANALYTICS</div>', unsafe_allow_html=True)
+    industry_df = pd.DataFrame(industry_data).sort_values('attacks', ascending=True)
     
-    coverage = (len(filtered_df) / len(df)) * 100 if len(df) > 0 else 0
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.metric("Coverage", f"{coverage:.1f}%")
-    with col_b:
-        st.metric("Records", len(filtered_df))
-    
-    # Add subtle activity indicator
-    st.markdown(f"""
-    <div style="margin-top: 1rem; padding: 0.75rem; background: {C['bg_secondary']}; border-radius: 6px; border-left: 3px solid {C['success']};">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-            <div class="activity-indicator">
-                <div class="activity-bar"></div>
-                <div class="activity-bar"></div>
-                <div class="activity-bar"></div>
-            </div>
-            <span style="font-size: 0.75rem; color: {C['text_secondary']}; font-weight: 600;">ACTIVE FEED</span>
-        </div>
-        <div style="font-size: 0.7rem; color: {C['text_muted']};">Intelligence pipeline operational</div>
-    </div>
-    """, unsafe_allow_html=True)
+    return df, actors_df, timeline_df, industry_df
 
-# --------------------------------------------------
-# MAIN CONTENT
-# --------------------------------------------------
-st.markdown('<div class="content-container">', unsafe_allow_html=True)
+# Generate data
+map_df, actors_df, timeline_df, industry_df = generate_sample_data()
+
+# Calculate metrics
+total_threats = map_df['attacks'].sum()
+high_severity = int(total_threats * 0.25)
+threat_actors = len(actors_df)
+countries_affected = len(map_df[map_df['attacks'] > 0])
+
+# Hero Section
+st.markdown(f"""
+<div class="hero-section">
+    <div class="hero-label">CONTINENTAL INTELLIGENCE</div>
+    <h1 class="hero-title">Africa Threat<br>Landscape</h1>
+    <p class="hero-subtitle">
+        Real-time cyber threat monitoring across 54 African nations with advanced intelligence analytics.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+# Africa Map
+fig_map = go.Figure()
+
+if not map_df.empty and 'iso_alpha' in map_df.columns:
+    fig_map.add_trace(go.Choropleth(
+        locations=map_df['iso_alpha'],
+        z=map_df['attacks'],
+        locationmode='ISO-3',
+        colorscale=[
+            [0.0, '#0D47A1'],   # Deep Blue (Safe)
+            [0.2, '#1976D2'],   # Blue
+            [0.3, '#00BCD4'],   # Cyan
+            [0.4, '#00E676'],   # Bright Green (Low)
+            [0.5, '#FFEB3B'],   # Yellow (Moderate)
+            [0.6, '#FFC107'],   # Amber
+            [0.7, '#FF9800'],   # Orange (High)
+            [0.8, '#FF5722'],   # Deep Orange
+            [0.9, '#F44336'],   # Red
+            [1.0, '#C41E3A']    # CyHawk Red (CRITICAL)
+        ],
+        marker=dict(
+            line=dict(color=C['border'], width=0.5)
+        ),
+        colorbar=dict(
+            title="Threat<br>Level",
+            titlefont=dict(color=C['text'], size=12),
+            tickfont=dict(color=C['text'], size=10),
+            bgcolor=C['bg_card'],
+            bordercolor=C['border'],
+            borderwidth=1,
+            x=1.02
+        ),
+        hovertemplate='<b>%{location}</b><br>Attacks: %{z}<extra></extra>',
+        name=''
+    ))
+
+fig_map.update_geos(
+    scope='africa',
+    projection_type='natural earth',
+    showland=True,
+    landcolor=C['bg_elevated'],
+    showocean=True,
+    oceancolor=C['bg'],
+    showcountries=True,
+    countrycolor=C['border'],
+    showlakes=False,
+    bgcolor=C['bg_card']
+)
+
+fig_map.update_layout(
+    height=650,
+    margin=dict(l=0, r=0, t=0, b=0),
+    paper_bgcolor=C['bg_card'],
+    plot_bgcolor=C['bg_card'],
+    geo=dict(
+        bgcolor=C['bg_card'],
+    ),
+    font=dict(color=C['text'])
+)
+
+st.plotly_chart(fig_map, use_container_width=True, config={'displayModeBar': False})
+
+# Map Stats Grid
+st.markdown(f"""
+<div class="map-stats-grid">
+    <div class="map-stat-card">
+        <div class="map-stat-value">{total_threats}</div>
+        <div class="map-stat-label">Active Threats</div>
+    </div>
+    <div class="map-stat-card">
+        <div class="map-stat-value">{high_severity}</div>
+        <div class="map-stat-label">Critical</div>
+    </div>
+    <div class="map-stat-card">
+        <div class="map-stat-value">{threat_actors}</div>
+        <div class="map-stat-label">Actors</div>
+    </div>
+    <div class="map-stat-card">
+        <div class="map-stat-value">{countries_affected}</div>
+        <div class="map-stat-label">Countries</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Legend
+st.markdown(f"""
+<div class="legend-container">
+    <div class="legend-item">
+        <div class="legend-dot" style="background: #0D47A1;"></div>
+        <span class="legend-text">Safe</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background: #00E676;"></div>
+        <span class="legend-text">Low</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background: #FFEB3B;"></div>
+        <span class="legend-text">Moderate</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background: #FF9800;"></div>
+        <span class="legend-text">High</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-dot" style="background: #C41E3A;"></div>
+        <span class="legend-text">Critical</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # Key Metrics
-total_threats = len(filtered_df)
-high_severity = len(filtered_df[filtered_df['severity'] == 'High'])
-active_actors = filtered_df['actor'].nunique()
-countries_affected = filtered_df['country'].nunique()
-
 st.markdown(f"""
 <div class="metrics-grid">
     <div class="metric-card">
         <div class="metric-label">Total Threats</div>
         <div class="metric-value">{total_threats}</div>
-        <div class="metric-change">Across all sources</div>
+        <div class="metric-change">+12 Today</div>
     </div>
+    
     <div class="metric-card">
         <div class="metric-label">High Severity</div>
         <div class="metric-value">{high_severity}</div>
-        <div class="metric-change">Requires immediate attention</div>
+        <div class="metric-change">+3 Today</div>
     </div>
+    
     <div class="metric-card">
         <div class="metric-label">Threat Actors</div>
-        <div class="metric-value">{active_actors}</div>
-        <div class="metric-change">Unique identifiers</div>
+        <div class="metric-value">{threat_actors}</div>
+        <div class="metric-change">Active Now</div>
     </div>
+    
     <div class="metric-card">
-        <div class="metric-label">Countries</div>
+        <div class="metric-label">Coverage</div>
         <div class="metric-value">{countries_affected}</div>
-        <div class="metric-change">Geographic coverage</div>
+        <div class="metric-change">Countries</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Charts Row 1
-col1, col2 = st.columns(2)
-
-with col1:
-    st.markdown(f"""
-    <div class="chart-card">
-        <div class="chart-header">
-            <h3 class="chart-title">Threat Classification</h3>
-            <span class="live-badge">LIVE</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    threat_counts = filtered_df['threat_type'].value_counts().reset_index()
-    threat_counts.columns = ['Threat Type', 'Count']
-    
-    fig = px.bar(
-        threat_counts,
-        x='Count',
-        y='Threat Type',
-        orientation='h',
-        template=C["template"],
-        color='Count',
-        color_continuous_scale=[[0, C['card']], [1, C['accent']]]
-    )
-    fig.update_layout(
-        height=300,
-        margin=dict(l=0, r=0, t=0, b=0),
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=C['text'], size=12),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False),
-        dragmode=False
-    )
-    fig.update_traces(marker_line_width=0)
-    st.plotly_chart(fig, use_container_width=True, key="threat_bar", config={'displayModeBar': False, 'staticPlot': False})
-
-with col2:
-    st.markdown(f"""
-    <div class="chart-card">
-        <div class="chart-header">
-            <h3 class="chart-title">Severity Analysis</h3>
-            <span class="live-badge">LIVE</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    severity_counts = filtered_df['severity'].value_counts().reset_index()
-    severity_counts.columns = ['Severity', 'Count']
-    
-    color_map = {'High': C['danger'], 'Medium': C['warning'], 'Low': C['success']}
-    fig = px.bar(
-        severity_counts,
-        x='Severity',
-        y='Count',
-        template=C["template"],
-        color='Severity',
-        color_discrete_map=color_map
-    )
-    fig.update_layout(
-        height=300,
-        margin=dict(l=0, r=0, t=0, b=0),
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=C['text'], size=12),
-        xaxis=dict(showgrid=False, title=""),
-        yaxis=dict(showgrid=False, title=""),
-        dragmode=False
-    )
-    st.plotly_chart(fig, use_container_width=True, key="severity_bar", config={'displayModeBar': False})
-
-# Timeline Chart
-timeline_df = filtered_df.groupby(filtered_df['date'].dt.date).size().reset_index()
-timeline_df.columns = ['Date', 'Count']
-
-# Get time range for display
-if len(timeline_df) > 0:
-    date_range = f"{timeline_df['Date'].min()} to {timeline_df['Date'].max()}"
-else:
-    date_range = "No data"
-
+# Threat Intelligence Section
 st.markdown(f"""
-<div class="chart-card">
-    <div class="chart-header">
-        <h3 class="chart-title">Activity Timeline</h3>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <span class="chart-badge">{date_range}</span>
-            <span class="live-badge">STREAMING</span>
-        </div>
-    </div>
+<div class="section-header">
+    <div class="section-label">ANALYSIS</div>
+    <h2 class="section-title">Threat Intelligence</h2>
 </div>
 """, unsafe_allow_html=True)
 
-fig = go.Figure()
-fig.add_trace(go.Scatter(
-    x=timeline_df['Date'],
-    y=timeline_df['Count'],
-    mode="lines",
-    fill="tozeroy",
-    line=dict(color=C['accent'], width=2),
-    fillcolor=f"rgba(196, 30, 58, 0.1)"
-))
-fig.update_layout(
-    height=250,
-    margin=dict(l=0, r=0, t=0, b=0),
-    template=C["template"],
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    font=dict(color=C['text'], size=12),
-    xaxis=dict(showgrid=False, title=""),
-    yaxis=dict(showgrid=False, title=""),
-    hovermode='x unified',
-    dragmode=False
-)
-st.plotly_chart(fig, use_container_width=True, key="timeline", config={'displayModeBar': False})
-
-# Charts Row 2 - Intelligence Analysis
+# Charts Grid
 col1, col2 = st.columns(2)
 
 with col1:
     st.markdown(f"""
-    <div class="chart-card">
-        <div class="chart-header">
-            <h3 class="chart-title">Top Threat Actors</h3>
-            <span class="chart-badge">Most Active</span>
-        </div>
+    <div class="chart-header">
+        <h3 class="chart-title">Threat Classification</h3>
+        <span class="chart-badge">Live</span>
     </div>
     """, unsafe_allow_html=True)
     
-    actor_counts = filtered_df['actor'].value_counts().head(10).reset_index()
-    actor_counts.columns = ['Actor', 'Count']
+    # Threat Classification Pie Chart
+    threat_types = {
+        'Ransomware': 180,
+        'Phishing': 156,
+        'DDoS': 98,
+        'Data Breach': 89,
+        'Malware': 60
+    }
     
-    fig = px.bar(
-        actor_counts,
-        x='Count',
-        y='Actor',
-        orientation='h',
-        template=C["template"],
-        color='Count',
-        color_continuous_scale=[[0, C['card']], [1, C['accent']]]
+    fig_classification = go.Figure(data=[go.Pie(
+        labels=list(threat_types.keys()),
+        values=list(threat_types.values()),
+        hole=0.5,
+        marker=dict(
+            colors=['#C41E3A', '#FF5722', '#FF9800', '#FFC107', '#FFEB3B'],
+            line=dict(color=C['bg'], width=2)
+        ),
+        textfont=dict(color=C['text'], size=12),
+        hovertemplate='<b>%{label}</b><br>Count: %{value}<br>%{percent}<extra></extra>'
+    )])
+    
+    fig_classification.update_layout(
+        height=280,
+        margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor=C['bg_elevated'],
+        plot_bgcolor=C['bg_elevated'],
+        showlegend=True,
+        legend=dict(
+            font=dict(color=C['text'], size=10),
+            bgcolor=C['bg_elevated'],
+            bordercolor=C['border'],
+            borderwidth=1
+        ),
+        font=dict(color=C['text'])
     )
-    fig.update_layout(
-        height=300,
-        margin=dict(l=0, r=0, t=0, b=0),
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=C['text'], size=12),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False),
-        dragmode=False
-    )
-    st.plotly_chart(fig, use_container_width=True, key="actor_bar", config={'displayModeBar': False})
+    
+    st.plotly_chart(fig_classification, use_container_width=True, config={'displayModeBar': False}, key='chart_classification')
 
 with col2:
     st.markdown(f"""
-    <div class="chart-card">
-        <div class="chart-header">
-            <h3 class="chart-title">Most Targeted Industries</h3>
-            <span class="chart-badge">Sector Analysis</span>
-        </div>
+    <div class="chart-header">
+        <h3 class="chart-title">Attack Trends</h3>
+        <span class="chart-badge">30 Days</span>
     </div>
     """, unsafe_allow_html=True)
     
-    sector_counts = filtered_df['sector'].value_counts().head(10).reset_index()
-    sector_counts.columns = ['Sector', 'Count']
+    # Attack Trends Timeline
+    fig_timeline = go.Figure()
     
-    fig = px.bar(
-        sector_counts,
-        x='Count',
-        y='Sector',
-        orientation='h',
-        template=C["template"],
-        color='Count',
-        color_continuous_scale=[[0, C['card']], [1, C['accent']]]
-    )
-    fig.update_layout(
-        height=300,
-        margin=dict(l=0, r=0, t=0, b=0),
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=C['text'], size=12),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False),
-        dragmode=False
-    )
-    st.plotly_chart(fig, use_container_width=True, key="industry_bar", config={'displayModeBar': False})
-
-# Charts Row 3 - Geographic & Threat Analysis
-col1, col2 = st.columns(2)
-
-
-with col1:
-    st.markdown(f"""
-    <div class="chart-card">
-        <div class="chart-header">
-            <h3 class="chart-title">Africa Threat Map</h3>
-            <span class="chart-badge">Hover for Details</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    colors_timeline = ['#C41E3A', '#FF9800', '#FFEB3B', '#00E676']
+    threat_categories = ['Ransomware', 'Phishing', 'DDoS', 'Data Breach']
     
-    # Prepare data: Get top actors for each African country
-    if len(filtered_df) > 0:
-        african_countries = filtered_df['country'].unique()
-        
-        map_data = []
-        for country in african_countries:
-            country_df = filtered_df[filtered_df['country'] == country]
-            total_attacks = len(country_df)
-            
-            # Get top 5 actors targeting this country
-            top_actors = country_df['actor'].value_counts().head(5)
-            
-            # Format actor list for hover text
-            if len(top_actors) > 0:
-                actor_list = "<br>".join([
-                    f"  • {actor}: {count} attack{'s' if count > 1 else ''}" 
-                    for actor, count in top_actors.items()
-                ])
-            else:
-                actor_list = "  • No data"
-            
-            # Get threat type breakdown
-            threat_types = country_df['threat_type'].value_counts().head(3)
-            if len(threat_types) > 0:
-                threat_list = "<br>".join([
-                    f"  • {threat}: {count}" 
-                    for threat, count in threat_types.items()
-                ])
-            else:
-                threat_list = "  • No data"
-            
-            map_data.append({
-                'Country': country,
-                'Attacks': total_attacks,
-                'Top_Actors': actor_list,
-                'Threat_Types': threat_list
-            })
-        
-        if len(map_data) > 0:
-            map_df = pd.DataFrame(map_data)
-            
-            # Create detailed hover text
-            map_df['hover_text'] = map_df.apply(
-                lambda row: (
-                    f"<b>{row['Country']}</b><br>"
-                    f"<b>Total Attacks:</b> {row['Attacks']}<br><br>"
-                    f"<b>Top Threat Actors:</b><br>{row['Top_Actors']}<br><br>"
-                    f"<b>Primary Threats:</b><br>{row['Threat_Types']}"
-                ),
-                axis=1
-            )
-            
-            # ISO-3 country codes for African countries
-            country_iso_map = {
-                'Nigeria': 'NGA', 'South Africa': 'ZAF', 'Kenya': 'KEN', 'Egypt': 'EGY',
-                'Ghana': 'GHA', 'Morocco': 'MAR', 'Tanzania': 'TZA', 'Ethiopia': 'ETH',
-                'Uganda': 'UGA', 'Algeria': 'DZA', 'Tunisia': 'TUN', 'Zimbabwe': 'ZWE',
-                'Mozambique': 'MOZ', 'Zambia': 'ZMB', 'Senegal': 'SEN', 'Rwanda': 'RWA',
-                'Cameroon': 'CMR', 'Ivory Coast': 'CIV', "Cote d'Ivoire": 'CIV',
-                'Angola': 'AGO', 'Sudan': 'SDN', 'Libya': 'LBY', 'Mali': 'MLI',
-                'Malawi': 'MWI', 'Niger': 'NER', 'Somalia': 'SOM', 'Congo': 'COG',
-                'Botswana': 'BWA', 'Gabon': 'GAB', 'Mauritius': 'MUS', 'Namibia': 'NAM',
-                'Madagascar': 'MDG', 'Burkina Faso': 'BFA', 'Guinea': 'GIN',
-                'Benin': 'BEN', 'Burundi': 'BDI', 'Togo': 'TGO', 'Sierra Leone': 'SLE',
-                'Liberia': 'LBR', 'Mauritania': 'MRT', 'Eritrea': 'ERI', 'Gambia': 'GMB',
-                'Lesotho': 'LSO', 'Equatorial Guinea': 'GNQ', 'Djibouti': 'DJI',
-                'Eswatini': 'SWZ', 'Swaziland': 'SWZ', 'Cape Verde': 'CPV',
-                'Seychelles': 'SYC', 'Central African Republic': 'CAF', 'Chad': 'TCD',
-                'South Sudan': 'SSD', 'Comoros': 'COM', 'Sao Tome and Principe': 'STP',
-                'DR Congo': 'COD', 'Democratic Republic of Congo': 'COD',
-                'Democratic Republic of the Congo': 'COD'
-            }
-            
-            # Add ISO codes
-            map_df['iso_alpha'] = map_df['Country'].map(country_iso_map)
-            
-            # Remove countries without ISO codes
-            map_df = map_df.dropna(subset=['iso_alpha'])
-            
-            if len(map_df) > 0:
-                # Create the colorful Africa choropleth map
-                fig_map = go.Figure(data=go.Choropleth(
-                    locations=map_df['iso_alpha'],
-                    z=map_df['Attacks'],
-                    text=map_df['hover_text'],
-                    hovertemplate='%{text}<extra></extra>',
-                    
-                    # COLORFUL GRADIENT - Blue to Red
-                    colorscale=[
-                        [0.0, '#2563EB'],   # Blue – Safe
-                        [0.2, '#16A34A'],   # Green – Low
-                        [0.4, '#EAB308'],   # Yellow – Moderate
-                        [0.6, '#F97316'],   # Orange – High
-                        [0.8, '#D946EF'],   # Toxic Magenta – Severe
-                        [1.0, '#C41E3A']    # CyHawk Red – CRITICAL
-                    ],
-                    
-                    autocolorscale=False,
-                    reversescale=False,
-                    marker_line_color='#37474F',
-                    marker_line_width=1,
-                    
-                    colorbar=dict(
-                        title="<b>Attacks</b>",
-                        thickness=12,
-                        len=0.6,
-                        bgcolor='rgba(0,0,0,0)',
-                        tickfont=dict(color=C['text'], size=10),
-                        titlefont=dict(color=C['text'], size=11),
-                        outlinewidth=0,
-                        x=1.02
-                    )
-                ))
-                
-                # Focus on Africa
-                fig_map.update_geos(
-                    scope='africa',
-                    projection_type='natural earth',
-                    showframe=False,
-                    showcoastlines=True,
-                    coastlinecolor='#37474F',
-                    coastlinewidth=0.5,
-                    showcountries=True,
-                    countrycolor='#37474F',
-                    countrywidth=0.5,
-                    showland=True,
-                    landcolor=C['bg_secondary'],
-                    bgcolor=C['bg'],
-                    showlakes=False,
-                    showocean=True,
-                    oceancolor=C['bg']
-                )
-                
-                fig_map.update_layout(
-                    height=400,
-                    margin=dict(l=0, r=0, t=0, b=0),
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    geo=dict(
-                        bgcolor='rgba(0,0,0,0)'
-                    ),
-                    font=dict(color=C['text'], size=11),
-                    dragmode=False,
-                    hoverlabel=dict(
-                        bgcolor=C['card'],
-                        font_size=11,
-                        font_color=C['text'],
-                        font_family="Inter",
-                        bordercolor=C['accent']
-                    )
-                )
-                
-                # Display map with unique key
-                st.plotly_chart(
-                    fig_map, 
-                    use_container_width=True, 
-                    key="africa_threat_map_viz",
-                    config={'displayModeBar': False, 'responsive': True}
-                )
-                
-                # Colorful legend
-                st.markdown(f"""
-                <div style="
-                    padding: 0.75rem;
-                    background: {C['card']};
-                    border-radius: 6px;
-                    border-left: 3px solid {C['accent']};
-                    margin-top: 0.5rem;
-                ">
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <p style="margin: 0; color: {C['text']}; font-size: 0.85rem; font-weight: 600;">
-                            💡 Hover over countries for threat intelligence
-                        </p>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
-                            <span style="color: {C['text_secondary']}; font-size: 0.8rem;">Threat Level:</span>
-                            <div style="display: flex; align-items: center; gap: 0.25rem;">
-                                <div style="width: 16px; height: 16px; background: #0D47A1; border-radius: 2px;"></div>
-                                <span style="color: {C['text_muted']}; font-size: 0.7rem;">Safe</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.25rem;">
-                                <div style="width: 16px; height: 16px; background: #00E676; border-radius: 2px;"></div>
-                                <span style="color: {C['text_muted']}; font-size: 0.7rem;">Low</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.25rem;">
-                                <div style="width: 16px; height: 16px; background: #FFEB3B; border-radius: 2px;"></div>
-                                <span style="color: {C['text_muted']}; font-size: 0.7rem;">Moderate</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.25rem;">
-                                <div style="width: 16px; height: 16px; background: #FF9800; border-radius: 2px;"></div>
-                                <span style="color: {C['text_muted']}; font-size: 0.7rem;">High</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.25rem;">
-                                <div style="width: 16px; height: 16px; background: #C41E3A; border-radius: 2px;"></div>
-                                <span style="color: {C['text_muted']}; font-size: 0.7rem;">CRITICAL</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.info("No African countries found in data")
-        else:
-            st.info("No country data available")
-    else:
-        st.info("No data available - adjust filters")
-        
-# IMPORTANT: Make sure you DELETED the old country_bar chart above!
-# There should be NO other chart with key="country_bar" in your file.
-    st.markdown(f"""
-    <div class="chart-card">
-        <div class="chart-header">
-            <h3 class="chart-title">Top Ransomware Groups</h3>
-            <span class="chart-badge">Ransomware Activity</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    for i, category in enumerate(threat_categories):
+        fig_timeline.add_trace(go.Scatter(
+            x=timeline_df['date'],
+            y=timeline_df[category],
+            mode='lines',
+            name=category,
+            line=dict(color=colors_timeline[i], width=2),
+            fill='tonexty' if i > 0 else 'tozeroy',
+            fillcolor=f'rgba({int(colors_timeline[i][1:3], 16)}, {int(colors_timeline[i][3:5], 16)}, {int(colors_timeline[i][5:7], 16)}, 0.1)',
+            hovertemplate='<b>%{fullData.name}</b><br>Date: %{x|%b %d}<br>Attacks: %{y}<extra></extra>'
+        ))
     
-    # Filter for ransomware threats
-    ransomware_df = filtered_df[filtered_df['threat_type'] == 'Ransomware']
-    if len(ransomware_df) > 0:
-        ransomware_actors = ransomware_df['actor'].value_counts().head(10).reset_index()
-        ransomware_actors.columns = ['Group', 'Count']
-        
-        fig = px.bar(
-            ransomware_actors,
-            x='Count',
-            y='Group',
+    fig_timeline.update_layout(
+        height=280,
+        margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor=C['bg_elevated'],
+        plot_bgcolor=C['bg_elevated'],
+        xaxis=dict(
+            gridcolor=C['border'],
+            showgrid=True,
+            color=C['text'],
+            title=None
+        ),
+        yaxis=dict(
+            gridcolor=C['border'],
+            showgrid=True,
+            color=C['text'],
+            title=None
+        ),
+        showlegend=True,
+        legend=dict(
+            font=dict(color=C['text'], size=10),
+            bgcolor=C['bg_elevated'],
+            bordercolor=C['border'],
+            borderwidth=1,
             orientation='h',
-            template=C["template"],
-            color='Count',
-            color_continuous_scale=[[0, C['card']], [1, C['danger']]]
-        )
-        fig.update_layout(
-            height=300,
-            margin=dict(l=0, r=0, t=0, b=0),
-            showlegend=False,
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(color=C['text'], size=12),
-            xaxis=dict(showgrid=False),
-            yaxis=dict(showgrid=False),
-            dragmode=False
-        )
-        st.plotly_chart(fig, use_container_width=True, key="ransomware_bar", config={'displayModeBar': False})
-    else:
-        st.info("No ransomware activity in selected period")
+            yanchor='bottom',
+            y=1.02,
+            xanchor='right',
+            x=1
+        ),
+        hovermode='x unified',
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig_timeline, use_container_width=True, config={'displayModeBar': False}, key='chart_timeline')
 
-# Charts Row 4 - Threat Type Details
-st.markdown(f"""
-<div class="chart-card">
+# Second row of charts
+col3, col4 = st.columns(2)
+
+with col3:
+    st.markdown(f"""
     <div class="chart-header">
-        <h3 class="chart-title">Top Threats</h3>
-        <span class="chart-badge">Threat Type Breakdown</span>
+        <h3 class="chart-title">Top Threat Actors</h3>
+        <span class="chart-badge">Most Active</span>
     </div>
+    """, unsafe_allow_html=True)
+    
+    # Top Threat Actors
+    fig_actors = go.Figure()
+    
+    fig_actors.add_trace(go.Bar(
+        y=actors_df['actor'],
+        x=actors_df['attacks'],
+        orientation='h',
+        marker=dict(
+            color=actors_df['attacks'],
+            colorscale=[[0, '#00E676'], [0.5, '#FF9800'], [1, '#C41E3A']],
+            line=dict(color=C['border'], width=1)
+        ),
+        hovertemplate='<b>%{y}</b><br>Attacks: %{x}<extra></extra>',
+        showlegend=False
+    ))
+    
+    fig_actors.update_layout(
+        height=280,
+        margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor=C['bg_elevated'],
+        plot_bgcolor=C['bg_elevated'],
+        xaxis=dict(
+            gridcolor=C['border'],
+            showgrid=True,
+            color=C['text'],
+            title=None
+        ),
+        yaxis=dict(
+            gridcolor=C['border'],
+            showgrid=False,
+            color=C['text'],
+            title=None
+        ),
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig_actors, use_container_width=True, config={'displayModeBar': False}, key='chart_actors')
+
+with col4:
+    st.markdown(f"""
+    <div class="chart-header">
+        <h3 class="chart-title">Targeted Industries</h3>
+        <span class="chart-badge">Sector</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Targeted Industries
+    fig_industry = go.Figure()
+    
+    fig_industry.add_trace(go.Bar(
+        y=industry_df['industry'],
+        x=industry_df['attacks'],
+        orientation='h',
+        marker=dict(
+            color='#C41E3A',
+            line=dict(color=C['border'], width=1)
+        ),
+        hovertemplate='<b>%{y}</b><br>Attacks: %{x}<extra></extra>',
+        showlegend=False
+    ))
+    
+    fig_industry.update_layout(
+        height=280,
+        margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor=C['bg_elevated'],
+        plot_bgcolor=C['bg_elevated'],
+        xaxis=dict(
+            gridcolor=C['border'],
+            showgrid=True,
+            color=C['text'],
+            title=None
+        ),
+        yaxis=dict(
+            gridcolor=C['border'],
+            showgrid=False,
+            color=C['text'],
+            title=None
+        ),
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig_industry, use_container_width=True, config={'displayModeBar': False}, key='chart_industry')
+
+# Ransomware Intelligence Section
+st.markdown(f"""
+<div class="section-header">
+    <div class="section-label">CRITICAL</div>
+    <h2 class="section-title">Ransomware Intelligence</h2>
 </div>
 """, unsafe_allow_html=True)
 
-threat_details = filtered_df.groupby(['threat_type', 'severity']).size().reset_index(name='count')
+# Ransomware charts
+col5, col6 = st.columns(2)
 
-fig = px.bar(
-    threat_details,
-    x='threat_type',
-    y='count',
-    color='severity',
-    template=C["template"],
-    color_discrete_map={'High': C['danger'], 'Medium': C['warning'], 'Low': C['success']},
-    barmode='stack'
-)
-fig.update_layout(
-    height=300,
-    margin=dict(l=0, r=0, t=0, b=0),
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    font=dict(color=C['text'], size=12),
-    xaxis=dict(showgrid=False, title="Threat Type"),
-    yaxis=dict(showgrid=False, title="Count"),
-    legend=dict(
-        title="Severity",
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="right",
-        x=1
-    ),
-    dragmode=False
-)
-st.plotly_chart(fig, use_container_width=True, key="threats_stacked", config={'displayModeBar': False})
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-# --------------------------------------------------
-# EXPORT (DATA UPLOAD REMOVED - BACKEND ONLY)
-# --------------------------------------------------
-with st.sidebar:
-    st.markdown('<div style="margin-top: 2rem;"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-title">EXPORT</div>', unsafe_allow_html=True)
+with col5:
+    st.markdown(f"""
+    <div class="chart-header">
+        <h3 class="chart-title">Active Groups</h3>
+        <span class="chart-badge">Critical</span>
+    </div>
+    """, unsafe_allow_html=True)
     
-    if st.button("Generate Report", use_container_width=True):
-        csv = filtered_df.to_csv(index=False)
-        st.download_button(
-            label="⬇️ Download CSV",
-            data=csv,
-            file_name=f"cyhawk_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
+    # Active Ransomware Groups
+    ransomware_groups = actors_df.head(8).copy()
     
-    st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)
+    fig_ransomware = go.Figure()
     
-# --------------------------------------------------
-# FOOTER WITH SYSTEM STATUS
-# --------------------------------------------------
-# Calculate uptime (simulated)
-uptime_hours = int((time.time() - st.session_state.last_refresh_time) / 3600)
-if uptime_hours == 0:
-    uptime_display = f"{int((time.time() - st.session_state.last_refresh_time) / 60)} minutes"
-else:
-    uptime_display = f"{uptime_hours}h {int(((time.time() - st.session_state.last_refresh_time) % 3600) / 60)}m"
+    fig_ransomware.add_trace(go.Bar(
+        x=ransomware_groups['actor'],
+        y=ransomware_groups['attacks'],
+        marker=dict(
+            color=ransomware_groups['attacks'],
+            colorscale=[[0, '#FF9800'], [1, '#C41E3A']],
+            line=dict(color=C['border'], width=1)
+        ),
+        hovertemplate='<b>%{x}</b><br>Attacks: %{y}<extra></extra>',
+        showlegend=False
+    ))
+    
+    fig_ransomware.update_layout(
+        height=280,
+        margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor=C['bg_elevated'],
+        plot_bgcolor=C['bg_elevated'],
+        xaxis=dict(
+            gridcolor=C['border'],
+            showgrid=False,
+            color=C['text'],
+            title=None,
+            tickangle=-45
+        ),
+        yaxis=dict(
+            gridcolor=C['border'],
+            showgrid=True,
+            color=C['text'],
+            title=None
+        ),
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig_ransomware, use_container_width=True, config={'displayModeBar': False}, key='chart_ransomware')
 
+with col6:
+    st.markdown(f"""
+    <div class="chart-header">
+        <h3 class="chart-title">Impact Assessment</h3>
+        <span class="chart-badge">Severity</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Severity Distribution
+    severity_data = {
+        'Critical': 146,
+        'High': 237,
+        'Medium': 150,
+        'Low': 50
+    }
+    
+    fig_severity = go.Figure()
+    
+    fig_severity.add_trace(go.Bar(
+        x=list(severity_data.keys()),
+        y=list(severity_data.values()),
+        marker=dict(
+            color=['#C41E3A', '#FF9800', '#FFC107', '#00E676'],
+            line=dict(color=C['border'], width=1)
+        ),
+        hovertemplate='<b>%{x}</b><br>Count: %{y}<extra></extra>',
+        showlegend=False
+    ))
+    
+    fig_severity.update_layout(
+        height=280,
+        margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor=C['bg_elevated'],
+        plot_bgcolor=C['bg_elevated'],
+        xaxis=dict(
+            gridcolor=C['border'],
+            showgrid=False,
+            color=C['text'],
+            title=None
+        ),
+        yaxis=dict(
+            gridcolor=C['border'],
+            showgrid=True,
+            color=C['text'],
+            title=None
+        ),
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig_severity, use_container_width=True, config={'displayModeBar': False}, key='chart_severity')
+
+# Footer
 st.markdown(f"""
 <div class="footer">
-    <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 1rem; flex-wrap: wrap;">
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <div style="width: 8px; height: 8px; border-radius: 50%; background: {C['success']};"></div>
-            <span style="font-size: 0.75rem; color: {C['text_secondary']};">System Operational</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <div class="refresh-icon"></div>
-            <span style="font-size: 0.75rem; color: {C['text_secondary']};">Last sync: {minutes_ago}m ago</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 0.75rem; color: {C['text_secondary']};">⏱ Uptime: {uptime_display}</span>
-        </div>
+    <div class="footer-logo">
+        <span class="brand-highlight">CyHawk</span> Africa
     </div>
-    <strong style="color:{C['accent']}">CyHawk Africa</strong> © {datetime.now().year} | Threat Intelligence Platform<br>
-    <small style="color:{C['text_muted']}">Cyber Intelligence for Africa</small>
+    <div class="footer-links">
+        <a href="#" class="footer-link">About</a>
+        <a href="#" class="footer-link">Documentation</a>
+        <a href="#" class="footer-link">API</a>
+        <a href="#" class="footer-link">Contact</a>
+    </div>
+    <div class="footer-credits">
+        © 2025 CyHawk Africa. All Rights Reserved.
+    </div>
 </div>
 """, unsafe_allow_html=True)
