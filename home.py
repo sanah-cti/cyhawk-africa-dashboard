@@ -1192,16 +1192,12 @@ with col1:
                     
                     # COLORFUL GRADIENT - Blue to Red
                     colorscale=[
-                        [0.0, '#0D47A1'],   # Deep Blue (Safe)
-                        [0.2, '#1976D2'],   # Blue
-                        [0.3, '#00BCD4'],   # Cyan
-                        [0.4, '#00E676'],   # Bright Green (Low)
-                        [0.5, '#FFEB3B'],   # Yellow (Moderate)
-                        [0.6, '#FFC107'],   # Amber
-                        [0.7, '#FF9800'],   # Orange (High)
-                        [0.8, '#FF5722'],   # Deep Orange
-                        [0.9, '#F44336'],   # Red
-                        [1.0, '#C41E3A']    # CyHawk Red (CRITICAL)
+                        [0.0, '#2563EB'],   # Blue – Safe
+                        [0.2, '#16A34A'],   # Green – Low
+                        [0.4, '#EAB308'],   # Yellow – Moderate
+                        [0.6, '#F97316'],   # Orange – High
+                        [0.8, '#D946EF'],   # Toxic Magenta – Severe
+                        [1.0, '#C41E3A']    # CyHawk Red – CRITICAL
                     ],
                     
                     autocolorscale=False,
