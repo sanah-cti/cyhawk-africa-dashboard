@@ -894,40 +894,173 @@ with col2:
 # Charts Row 3 - Geographic & Threat Analysis
 col1, col2 = st.columns(2)
 
+# ============================================================================
+# COMPLETE REPLACEMENT FOR "TOP TARGETED COUNTRIES" SECTION
+# Replace lines 897-930 in your home.py with this code
+# ============================================================================
+
 with col1:
     st.markdown(f"""
     <div class="chart-card">
         <div class="chart-header">
-            <h3 class="chart-title">Top Targeted Countries</h3>
-            <span class="chart-badge">Geographic Hotspots</span>
+            <h3 class="chart-title">Africa Threat Map</h3>
+            <span class="chart-badge">Hover for Details</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    country_counts = filtered_df['country'].value_counts().head(10).reset_index()
-    country_counts.columns = ['Country', 'Count']
+    # Prepare data: Get top actors for each African country
+    african_countries = filtered_df['country'].unique()
     
-    fig = px.bar(
-        country_counts,
-        x='Count',
-        y='Country',
-        orientation='h',
-        template=C["template"],
-        color='Count',
-        color_continuous_scale=[[0, C['card']], [1, C['accent']]]
+    map_data = []
+    for country in african_countries:
+        country_df = filtered_df[filtered_df['country'] == country]
+        total_attacks = len(country_df)
+        
+        # Get top 5 actors targeting this country
+        top_actors = country_df['actor'].value_counts().head(5)
+        
+        # Format actor list for hover text
+        actor_list = "<br>".join([
+            f"  • {actor}: {count} attack{'s' if count > 1 else ''}" 
+            for actor, count in top_actors.items()
+        ])
+        
+        # Get threat type breakdown
+        threat_types = country_df['threat_type'].value_counts().head(3)
+        threat_list = "<br>".join([
+            f"  • {threat}: {count}" 
+            for threat, count in threat_types.items()
+        ])
+        
+        map_data.append({
+            'Country': country,
+            'Attacks': total_attacks,
+            'Top_Actors': actor_list if actor_list else '  • No data',
+            'Threat_Types': threat_list if threat_list else '  • No data'
+        })
+    
+    map_df = pd.DataFrame(map_data)
+    
+    # Create detailed hover text
+    map_df['hover_text'] = map_df.apply(
+        lambda row: (
+            f"<b>{row['Country']}</b><br>"
+            f"<b>Total Attacks:</b> {row['Attacks']}<br><br>"
+            f"<b>Top Threat Actors:</b><br>{row['Top_Actors']}<br><br>"
+            f"<b>Primary Threats:</b><br>{row['Threat_Types']}"
+        ),
+        axis=1
     )
-    fig.update_layout(
-        height=300,
-        margin=dict(l=0, r=0, t=0, b=0),
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=C['text'], size=12),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False),
-        dragmode=False
-    )
-    st.plotly_chart(fig, use_container_width=True, key="country_bar", config={'displayModeBar': False})
+    
+    # ISO-3 country codes for African countries
+    country_iso_map = {
+        'Nigeria': 'NGA', 'South Africa': 'ZAF', 'Kenya': 'KEN', 'Egypt': 'EGY',
+        'Ghana': 'GHA', 'Morocco': 'MAR', 'Tanzania': 'TZA', 'Ethiopia': 'ETH',
+        'Uganda': 'UGA', 'Algeria': 'DZA', 'Tunisia': 'TUN', 'Zimbabwe': 'ZWE',
+        'Mozambique': 'MOZ', 'Zambia': 'ZMB', 'Senegal': 'SEN', 'Rwanda': 'RWA',
+        'Cameroon': 'CMR', 'Ivory Coast': 'CIV', "Cote d'Ivoire": 'CIV',
+        'Angola': 'AGO', 'Sudan': 'SDN', 'Libya': 'LBY', 'Mali': 'MLI',
+        'Malawi': 'MWI', 'Niger': 'NER', 'Somalia': 'SOM', 'Congo': 'COG',
+        'Botswana': 'BWA', 'Gabon': 'GAB', 'Mauritius': 'MUS', 'Namibia': 'NAM',
+        'Madagascar': 'MDG', 'Burkina Faso': 'BFA', 'Guinea': 'GIN',
+        'Benin': 'BEN', 'Burundi': 'BDI', 'Togo': 'TGO', 'Sierra Leone': 'SLE',
+        'Liberia': 'LBR', 'Mauritania': 'MRT', 'Eritrea': 'ERI', 'Gambia': 'GMB',
+        'Lesotho': 'LSO', 'Equatorial Guinea': 'GNQ', 'Djibouti': 'DJI',
+        'Eswatini': 'SWZ', 'Swaziland': 'SWZ', 'Cape Verde': 'CPV',
+        'Seychelles': 'SYC', 'Central African Republic': 'CAF', 'Chad': 'TCD',
+        'South Sudan': 'SSD', 'Comoros': 'COM', 'Sao Tome and Principe': 'STP',
+        'DR Congo': 'COD', 'Democratic Republic of Congo': 'COD'
+    }
+    
+    # Add ISO codes
+    map_df['iso_alpha'] = map_df['Country'].map(country_iso_map)
+    
+    # Remove countries without ISO codes (non-African or unrecognized)
+    map_df = map_df.dropna(subset=['iso_alpha'])
+    
+    if len(map_df) > 0:
+        # Create the Africa choropleth map
+        fig_map = go.Figure(data=go.Choropleth(
+            locations=map_df['iso_alpha'],
+            z=map_df['Attacks'],
+            text=map_df['hover_text'],
+            hovertemplate='%{text}<extra></extra>',
+            colorscale=[
+                [0, C['card']],
+                [0.3, '#8B1538'],
+                [0.6, C['accent']],
+                [1.0, '#FF6B8A']
+            ],
+            autocolorscale=False,
+            reversescale=False,
+            marker_line_color=C['border'],
+            marker_line_width=0.5,
+            colorbar=dict(
+                title="Attacks",
+                thickness=10,
+                len=0.7,
+                bgcolor='rgba(0,0,0,0)',
+                tickfont=dict(color=C['text'], size=10),
+                titlefont=dict(color=C['text'], size=11)
+            )
+        ))
+        
+        # Focus on Africa
+        fig_map.update_geos(
+            scope='africa',
+            projection_type='natural earth',
+            showframe=False,
+            showcoastlines=True,
+            coastlinecolor=C['border'],
+            showcountries=True,
+            countrycolor=C['border'],
+            showland=True,
+            landcolor=C['card'],
+            bgcolor=C['bg'],
+            showlakes=False,
+            showocean=True,
+            oceancolor=C['bg_secondary']
+        )
+        
+        fig_map.update_layout(
+            height=450,
+            margin=dict(l=0, r=0, t=0, b=0),
+            paper_bgcolor='rgba(0,0,0,0)',
+            geo=dict(
+                bgcolor='rgba(0,0,0,0)',
+                lakecolor='rgba(0,0,0,0)'
+            ),
+            font=dict(color=C['text'], size=11),
+            dragmode=False,
+            hoverlabel=dict(
+                bgcolor=C['card'],
+                font_size=12,
+                font_color=C['text'],
+                bordercolor=C['accent']
+            )
+        )
+        
+        st.plotly_chart(fig_map, use_container_width=True, key="africa_map", config={'displayModeBar': False})
+        
+        # Add helpful legend below map
+        st.markdown(f"""
+        <div style="
+            padding: 0.75rem;
+            background: {C['card']};
+            border-radius: 8px;
+            border-left: 3px solid {C['accent']};
+            margin-top: 0.5rem;
+        ">
+            <p style="margin: 0; color: {C['text_secondary']}; font-size: 0.85rem;">
+                💡 <b>Hover over countries</b> to see top 5 threat actors and primary attack types
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.info("No African country data available in current filter selection")
+
+# The rest of your code continues here (col2 with Top Ransomware Groups, etc.)
 
 with col2:
     st.markdown(f"""
