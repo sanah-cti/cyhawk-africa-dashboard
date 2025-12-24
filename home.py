@@ -409,46 +409,249 @@ st.markdown(f"""
 }}
 
 /* Mobile Responsive */
+# ============================================================================
+# ENHANCED MOBILE-RESPONSIVE CSS
+# Add this to your CSS section (REPLACE the existing @media section around line 412)
+# ============================================================================
+
+"""
+/* ============================================
+   MOBILE & TABLET RESPONSIVE STYLES
+   ============================================ */
+
+/* Mobile First - Small devices (phones, 320px - 768px) */
 @media (max-width: 768px) {{
+    /* Navigation Bar */
     .nav-bar {{
-        padding: 0 1rem;
-        height: auto;
-        min-height: 70px;
-        flex-direction: column;
-        gap: 1rem;
-        padding-top: 1rem;
-        padding-bottom: 1rem;
+        padding: 0 1rem !important;
+        height: auto !important;
+        min-height: 60px !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
     }}
     
-    .metrics-grid {{
-        grid-template-columns: 1fr;
+    .nav-brand {{
+        width: 100% !important;
+        justify-content: center !important;
     }}
     
-    .content-container {{
-        padding: 1rem;
-    }}
-    
-    .metric-value {{
-        font-size: 2rem;
+    .nav-logo {{
+        width: 35px !important;
+        height: 35px !important;
     }}
     
     .nav-title {{
-        font-size: 1rem;
+        font-size: 1rem !important;
+    }}
+    
+    .nav-subtitle {{
+        font-size: 0.65rem !important;
+    }}
+    
+    .nav-actions {{
+        width: 100% !important;
+        justify-content: center !important;
+        flex-wrap: wrap !important;
+    }}
+    
+    /* Status indicators */
+    .status-indicator {{
+        padding: 0.4rem 0.75rem !important;
+        font-size: 0.75rem !important;
+    }}
+    
+    /* Content Container */
+    .content-container {{
+        padding: 1rem !important;
+        margin-top: 1rem !important;
+    }}
+    
+    /* Metrics Grid - Stack vertically on mobile */
+    .metrics-grid {{
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }}
+    
+    .metric-card {{
+        padding: 1.25rem !important;
+    }}
+    
+    .metric-value {{
+        font-size: 2rem !important;
+    }}
+    
+    .metric-label {{
+        font-size: 0.75rem !important;
+    }}
+    
+    /* Chart Cards */
+    .chart-card {{
+        margin-bottom: 1.5rem !important;
+        padding: 1rem !important;
+    }}
+    
+    .chart-title {{
+        font-size: 1rem !important;
+    }}
+    
+    .chart-badge {{
+        font-size: 0.65rem !important;
+        padding: 0.25rem 0.5rem !important;
+    }}
+    
+    /* Streamlit Columns - Force stack on mobile */
+    .stColumn {{
+        width: 100% !important;
+        min-width: 100% !important;
+        margin-bottom: 1rem !important;
+    }}
+    
+    /* Charts - Optimize height for mobile */
+    .stPlotlyChart {{
+        min-height: 300px !important;
+        max-height: 400px !important;
+    }}
+    
+    /* Better touch targets */
+    button, .stButton > button {{
+        min-height: 44px !important;
+        min-width: 44px !important;
+        padding: 0.75rem 1.5rem !important;
+        font-size: 0.9rem !important;
+    }}
+    
+    /* Selectbox and inputs */
+    .stSelectbox, .stMultiSelect {{
+        min-height: 44px !important;
+    }}
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab"] {{
+        font-size: 0.85rem !important;
+        padding: 0.75rem 1rem !important;
+    }}
+    
+    /* Sidebar - Full width on mobile when expanded */
+    [data-testid="stSidebar"] {{
+        width: 100% !important;
+        max-width: 100% !important;
+    }}
+    
+    /* Hide less critical badges on very small screens */
+    .chart-badge {{
+        display: none !important;
+    }}
+    
+    /* Footer */
+    .footer {{
+        padding: 1.5rem 1rem !important;
+        font-size: 0.75rem !important;
+    }}
+    
+    /* Filters - Stack vertically */
+    .filter-section {{
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }}
+    
+    /* Map legend - Better mobile layout */
+    .map-legend {{
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }}
+    
+    /* Text readability */
+    p, span, div {{
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }}
+    
+    /* Reduce animations on mobile for performance */
+    * {{
+        animation-duration: 0.3s !important;
+        transition-duration: 0.2s !important;
     }}
 }}
 
-/* Footer */
-.footer {{
-    text-align: center;
-    color: {C['text_muted']};
-    padding: 2rem;
-    margin-top: 3rem;
-    border-top: 1px solid {C['border']};
-    font-size: 0.875rem;
+/* Tablet - Medium devices (tablets, 769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {{
+    .metrics-grid {{
+        grid-template-columns: repeat(2, 1fr) !important;
+    }}
+    
+    .content-container {{
+        padding: 1.5rem !important;
+    }}
+    
+    .chart-card {{
+        padding: 1.5rem !important;
+    }}
+    
+    .stPlotlyChart {{
+        min-height: 350px !important;
+    }}
 }}
-</style>
-""", unsafe_allow_html=True)
 
+/* Large tablets and small desktops (1025px - 1366px) */
+@media (min-width: 1025px) and (max-width: 1366px) {{
+    .metrics-grid {{
+        grid-template-columns: repeat(2, 1fr) !important;
+    }}
+    
+    .content-container {{
+        padding: 2rem !important;
+    }}
+}}
+
+/* Extra large screens (1367px+) */
+@media (min-width: 1367px) {{
+    .content-container {{
+        max-width: 1600px !important;
+        margin: 0 auto !important;
+    }}
+}}
+
+/* Landscape mode on mobile */
+@media (max-width: 768px) and (orientation: landscape) {{
+    .nav-bar {{
+        flex-direction: row !important;
+        padding: 0.5rem 1rem !important;
+    }}
+    
+    .stPlotlyChart {{
+        min-height: 250px !important;
+        max-height: 300px !important;
+    }}
+}}
+
+/* Print styles */
+@media print {{
+    .nav-bar, .status-indicator, button, .stButton {{
+        display: none !important;
+    }}
+    
+    .chart-card {{
+        page-break-inside: avoid !important;
+    }}
+}}
+
+/* Accessibility - Reduced motion */
+@media (prefers-reduced-motion: reduce) {{
+    * {{
+        animation: none !important;
+        transition: none !important;
+    }}
+}}
+
+/* Dark mode specific adjustments for mobile */
+@media (max-width: 768px) and (prefers-color-scheme: dark) {{
+    .chart-card {{
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+    }}
+}}
+"""
 # --------------------------------------------------
 # DATA LOADING
 # --------------------------------------------------
