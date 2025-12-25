@@ -298,6 +298,19 @@ st.markdown(f"""
     text-transform: uppercase; letter-spacing: 2px; margin: 0;
 }}
 
+.header-nav {{
+    display: flex; gap: 2rem; align-items: center;
+}}
+
+.nav-link {{
+    color: {C['text_dim']}; text-decoration: none;
+    font-size: 0.9rem; font-weight: 500;
+    transition: color 0.2s;
+}}
+
+.nav-link:hover {{ color: {C['text']}; }}
+.nav-link.active {{ color: {C['cyhawk_red']}; }}
+
 .status-indicator {{
     display: flex; align-items: center; gap: 0.5rem;
     padding: 0.5rem 1rem; background: rgba(0, 255, 0, 0.1);
@@ -429,9 +442,15 @@ st.markdown(f"""
             <p>Threat Intelligence Platform</p>
         </div>
     </div>
-    <div class="status-indicator">
-        <div class="status-dot"></div>
-        <span style="color: {C['text_dim']}; font-size: 0.85rem;">Live</span>
+    <div class="header-nav">
+        <a href="/" target="_self" class="nav-link active">Home</a>
+        <a href="/Threat_Actors" target="_self" class="nav-link">Threat Actors</a>
+        <a href="/Actor_Profile" target="_self" class="nav-link">Actor Profile</a>
+        <a href="/Trending_Attacks" target="_self" class="nav-link">Trending Attacks</a>
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span style="color: {C['text_dim']}; font-size: 0.85rem;">Live</span>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
