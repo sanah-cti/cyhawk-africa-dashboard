@@ -7,7 +7,7 @@ import os
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image as RLImage
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 import io
@@ -211,15 +211,27 @@ def process_map_data(df):
 # PDF EXPORT - COMPREHENSIVE STRATEGIC THREAT INTELLIGENCE REPORT
 # ═══════════════════════════════════════════════════════════
 def add_watermark(canvas, doc):
-    """Add CyHawk Africa watermark to every page"""
+    """Add CyHawk Africa watermark and logo to every page"""
     canvas.saveState()
     
-    # Watermark
+    # Large diagonal watermark
     canvas.setFont('Helvetica-Bold', 60)
-    canvas.setFillColorRGB(0.9, 0.9, 0.9, alpha=0.1)
+    canvas.setFillColorRGB(0.85, 0.85, 0.85, alpha=0.15)
     canvas.translate(A4[0]/2, A4[1]/2)
     canvas.rotate(45)
     canvas.drawCentredString(0, 0, "CYHAWK AFRICA")
+    canvas.rotate(-45)
+    canvas.translate(-A4[0]/2, -A4[1]/2)
+    
+    # Try to add logo to header (only if not first page)
+    page_num = canvas.getPageNumber()
+    if page_num > 1:
+        try:
+            logo_path = "assets/cyhawk_logo.png"
+            if os.path.exists(logo_path):
+                canvas.drawImage(logo_path, 40, A4[1] - 50, width=30, height=30, preserveAspectRatio=True, mask='auto')
+        except:
+            pass  # Logo not found, continue without it
     
     # Footer with page number
     canvas.restoreState()
@@ -227,7 +239,6 @@ def add_watermark(canvas, doc):
     canvas.setFillColorRGB(0.5, 0.5, 0.5)
     
     # Page number
-    page_num = canvas.getPageNumber()
     text = f"Page {page_num}"
     canvas.drawRightString(A4[0] - 30, 20, text)
     
@@ -236,9 +247,10 @@ def add_watermark(canvas, doc):
     canvas.setFont('Helvetica-Bold', 8)
     canvas.drawString(30, 20, "CyHawk Africa | Threat Intelligence Platform")
     
-    # TLP:WHITE classification banner
+    # TLP:WHITE classification banner at top
     canvas.setFillColorRGB(1, 1, 1)  # White background
-    canvas.rect(A4[0]/2 - 60, A4[1] - 25, 120, 15, fill=1, stroke=0)
+    canvas.rect(A4[0]/2 - 60, A4[1] - 25, 120, 15, fill=1, stroke=1)
+    canvas.setStrokeColorRGB(0.8, 0.8, 0.8)
     canvas.setFillColorRGB(0, 0, 0)  # Black text
     canvas.setFont('Helvetica-Bold', 9)
     canvas.drawCentredString(A4[0]/2, A4[1] - 17, "TLP:WHITE")
@@ -307,7 +319,18 @@ def generate_pdf(df, filters):
     )
     
     # ==================== COVER PAGE ====================
-    elements.append(Spacer(1, 80))
+    elements.append(Spacer(1, 40))
+    
+    # Add logo at top if available
+    try:
+        logo_path = "assets/cyhawk_logo.png"
+        if os.path.exists(logo_path):
+            logo = RLImage(logo_path, width=80, height=80)
+            logo.hAlign = 'CENTER'
+            elements.append(logo)
+            elements.append(Spacer(1, 20))
+    except:
+        pass  # Logo not found, continue without it
     
     # Title with logo placeholder
     elements.append(Paragraph("CyHawk Africa", title_style))
@@ -367,7 +390,6 @@ def generate_pdf(df, filters):
     
     # Page break
     elements.append(Spacer(1, 0.1*inch))
-    from reportlab.platypus import PageBreak
     elements.append(PageBreak())
     
     # ==================== EXECUTIVE SUMMARY ====================
@@ -385,7 +407,7 @@ def generate_pdf(df, filters):
     
     summary_text = f"""
     This strategic threat intelligence report provides a comprehensive analysis of cyber threats 
-    targeting African infrastructure during the reporting period. The analysis is based on 
+    targeting African organizations during the reporting period. The analysis is based on 
     <b>{total_incidents}</b> confirmed security incidents across <b>{countries_affected}</b> African nations.<br/><br/>
     
     <b>KEY FINDINGS:</b><br/>
@@ -618,14 +640,13 @@ def generate_pdf(df, filters):
     elements.append(Paragraph("ABOUT CYHAWK AFRICA", heading_style))
     about_text = """
     CyHawk Africa is the continent's leading threat intelligence platform, providing real-time 
-    cyber threat monitoring and analysis across 54 African nations. Our mission is to protect 
+    cyber threat monitoring and analysis across 54 African countries. Our mission is to protect 
     African digital infrastructure through advanced threat detection, intelligence sharing, and 
-    strategic security guidance.<br/><br/>
+    strategic security advisories.<br/><br/>
     
     <b>FOR MORE INFORMATION:</b><br/>
     Website: dashboard.cyhawk-africa.com<br/>
-    Email: intel@cyhawk-africa.com<br/>
-    Emergency Hotline: +234-XXX-XXXX-XXX<br/><br/>
+    Email: intel@cyhawk-africa.com<br/><br/>
     
     <b>TRAFFIC LIGHT PROTOCOL:</b><br/>
     <b>Classification:</b> TLP:WHITE<br/>
@@ -658,6 +679,12 @@ st.markdown(f"""
 .stApp {{ background: {C['bg']}; color: {C['text']}; }}
 #MainMenu, footer, header {{ visibility: hidden; }}
 
+/* Remove default Streamlit padding */
+.main .block-container {{
+    padding-top: 0 !important;
+    max-width: 100% !important;
+}}
+
 .stApp::before {{
     content: ''; position: fixed; inset: 0;
     background-image: 
@@ -668,15 +695,20 @@ st.markdown(f"""
 
 .main-header {{
     background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px);
-    border-bottom: 1px solid {C['border']}; padding: 1rem 3rem;
+    border-bottom: 1px solid {C['border']}; padding: 1.5rem 3rem;
     display: flex; justify-content: space-between; align-items: center;
-    margin: -6rem -6rem 2rem -6rem;
+    margin: 0 0 2rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
 }}
 
 .logo-section {{ display: flex; align-items: center; gap: 1rem; }}
 .logo-container {{
     width: 50px; height: 50px; background: {C['cyhawk_red']};
     border-radius: 50%; box-shadow: 0 0 20px {C['red_glow']};
+    flex-shrink: 0;
 }}
 
 .brand-text h1 {{ font-size: 1.5rem; font-weight: 600; margin: 0; }}
@@ -715,6 +747,7 @@ st.markdown(f"""
 .hero-label {{
     color: {C['cyhawk_red']}; font-size: 0.75rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;
+    margin-top: 2rem;
 }}
 .hero-label::before {{
     content: ''; display: inline-block; width: 30px; height: 2px;
@@ -809,11 +842,43 @@ st.markdown(f"""
     padding: 0.75rem 1.5rem !important; font-weight: 600 !important;
 }}
 
-.block-container {{ padding-top: 1rem; max-width: 1400px; }}
+.block-container {{ 
+    padding-top: 0 !important;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}}
+
+@media (max-width: 1024px) {{
+    .main-header {{
+        padding: 1rem 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }}
+    
+    .header-nav {{
+        width: 100%;
+        justify-content: space-between;
+    }}
+}}
 
 @media (max-width: 768px) {{
     .stats-grid {{ grid-template-columns: 1fr; }}
     .hero-title {{ font-size: 2rem; }}
+    
+    .main-header {{
+        padding: 1rem;
+    }}
+    
+    .header-nav {{
+        gap: 1rem;
+        flex-wrap: wrap;
+    }}
+    
+    .nav-link {{
+        font-size: 0.8rem;
+    }}
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -851,6 +916,8 @@ with st.sidebar:
 # ═══════════════════════════════════════════════════════════
 # HERO
 # ═══════════════════════════════════════════════════════════
+st.markdown('<div style="max-width: 1400px; margin: 0 auto; padding: 0 2rem;">', unsafe_allow_html=True)
+
 st.markdown(f"""
 <div class="hero-label">CONTINENTAL INTELLIGENCE</div>
 <h1 class="hero-title">Africa Threat Landscape</h1>
@@ -1227,16 +1294,19 @@ with col6:
 st.markdown("---")
 c_a, c_b = st.columns([3, 1])
 with c_b:
-    if st.button("📥 Export PDF Report", type="primary", use_container_width=True):
+    if st.button("Export PDF Report", type="primary", use_container_width=True):
         filters_applied = {
             'Year': year, 'Month': month, 'Country': country,
             'Type': threat_type, 'Actor': actor, 'Severity': severity
         }
         pdf_buf = generate_pdf(filtered_df, filters_applied)
         st.download_button(
-            "📄 Download PDF",
+            "Download PDF",
             data=pdf_buf,
             file_name=f"cyhawk_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
             mime="application/pdf",
             use_container_width=True
         )
+
+# Close content wrapper
+st.markdown('</div>', unsafe_allow_html=True)
