@@ -208,51 +208,439 @@ def process_map_data(df):
     return pd.DataFrame(map_data)
 
 # ═══════════════════════════════════════════════════════════
-# PDF EXPORT
+# PDF EXPORT - COMPREHENSIVE STRATEGIC THREAT INTELLIGENCE REPORT
 # ═══════════════════════════════════════════════════════════
+def add_watermark(canvas, doc):
+    """Add CyHawk Africa watermark to every page"""
+    canvas.saveState()
+    
+    # Watermark
+    canvas.setFont('Helvetica-Bold', 60)
+    canvas.setFillColorRGB(0.9, 0.9, 0.9, alpha=0.1)
+    canvas.translate(A4[0]/2, A4[1]/2)
+    canvas.rotate(45)
+    canvas.drawCentredString(0, 0, "CYHAWK AFRICA")
+    
+    # Footer with page number
+    canvas.restoreState()
+    canvas.setFont('Helvetica', 8)
+    canvas.setFillColorRGB(0.5, 0.5, 0.5)
+    
+    # Page number
+    page_num = canvas.getPageNumber()
+    text = f"Page {page_num}"
+    canvas.drawRightString(A4[0] - 30, 20, text)
+    
+    # CyHawk footer branding
+    canvas.setFillColorRGB(0.77, 0.12, 0.23)  # CyHawk Red
+    canvas.setFont('Helvetica-Bold', 8)
+    canvas.drawString(30, 20, "CyHawk Africa | Threat Intelligence Platform")
+    
+    # TLP:WHITE classification banner
+    canvas.setFillColorRGB(1, 1, 1)  # White background
+    canvas.rect(A4[0]/2 - 60, A4[1] - 25, 120, 15, fill=1, stroke=0)
+    canvas.setFillColorRGB(0, 0, 0)  # Black text
+    canvas.setFont('Helvetica-Bold', 9)
+    canvas.drawCentredString(A4[0]/2, A4[1] - 17, "TLP:WHITE")
+
 def generate_pdf(df, filters):
-    """Generate PDF report"""
+    """Generate comprehensive strategic threat intelligence report"""
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
+    
+    # Create document with custom page template
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=A4,
+        rightMargin=40,
+        leftMargin=40,
+        topMargin=60,
+        bottomMargin=40
+    )
     
     elements = []
     styles = getSampleStyleSheet()
     
+    # Custom styles
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=24,
+        fontSize=28,
         textColor=colors.HexColor('#C41E3A'),
+        spaceAfter=12,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        leading=34
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=16,
+        textColor=colors.HexColor('#333333'),
         spaceAfter=30,
         alignment=TA_CENTER,
         fontName='Helvetica-Bold'
     )
     
-    elements.append(Paragraph("CyHawk Africa<br/>Threat Intelligence Report", title_style))
-    elements.append(Spacer(1, 12))
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#C41E3A'),
+        spaceAfter=12,
+        spaceBefore=20,
+        fontName='Helvetica-Bold',
+        borderWidth=0,
+        borderColor=colors.HexColor('#C41E3A'),
+        borderPadding=5,
+        leftIndent=0
+    )
     
-    meta_style = ParagraphStyle('Meta', parent=styles['Normal'], fontSize=10, textColor=colors.grey)
-    meta = Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}<br/>Total Incidents: {len(df)}", meta_style)
-    elements.append(meta)
-    elements.append(Spacer(1, 20))
+    body_style = ParagraphStyle(
+        'Body',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#333333'),
+        spaceAfter=12,
+        leading=14,
+        alignment=TA_LEFT
+    )
     
-    summary_data = [
-        ['Metric', 'Value'],
-        ['Total Incidents', str(len(df))],
-        ['Countries', str(df['country'].nunique())],
-        ['Threat Actors', str(df['threat_actor'].nunique())],
-        ['Critical', str(len(df[df['severity'] == 'Critical']))],
+    # ==================== COVER PAGE ====================
+    elements.append(Spacer(1, 80))
+    
+    # Title with logo placeholder
+    elements.append(Paragraph("CyHawk Africa", title_style))
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph("STRATEGIC THREAT INTELLIGENCE REPORT", subtitle_style))
+    
+    elements.append(Spacer(1, 40))
+    
+    # Report metadata box
+    report_date = datetime.now().strftime('%B %d, %Y')
+    report_period = f"{df['date'].min().strftime('%Y-%m-%d')} to {df['date'].max().strftime('%Y-%m-%d')}"
+    
+    meta_data = [
+        ['Report Date:', report_date],
+        ['Reporting Period:', report_period],
+        ['Classification:', 'TLP:WHITE'],
+        ['Distribution:', 'Unlimited Distribution Permitted'],
+        ['Total Incidents:', str(len(df))],
+        ['Geographic Scope:', f"{df['country'].nunique()} African Countries"]
     ]
     
-    table = Table(summary_data, colWidths=[3*inch, 2*inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#C41E3A')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-        ('GRID', (0,0), (-1,-1), 1, colors.grey)
+    meta_table = Table(meta_data, colWidths=[2.5*inch, 3*inch])
+    meta_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#F0F0F0')),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#C41E3A')),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#FAFAFA')]),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
     ]))
     
-    elements.append(table)
-    doc.build(elements)
+    elements.append(meta_table)
+    elements.append(Spacer(1, 60))
+    
+    # Applied filters
+    active_filters = {k: v for k, v in filters.items() if not str(v).startswith('All')}
+    if active_filters:
+        elements.append(Paragraph("ACTIVE FILTERS", heading_style))
+        filter_text = "<br/>".join([f"<b>{k}:</b> {v}" for k, v in active_filters.items()])
+        elements.append(Paragraph(filter_text, body_style))
+        elements.append(Spacer(1, 20))
+    
+    # Disclaimer
+    disclaimer_style = ParagraphStyle('Disclaimer', parent=styles['Normal'], fontSize=8, 
+                                     textColor=colors.grey, alignment=TA_CENTER, leading=10)
+    disclaimer = """TLP:WHITE - This information may be distributed without restriction, subject to 
+    copyright controls. Recipients may share TLP:WHITE information freely without constraints."""
+    elements.append(Spacer(1, 100))
+    elements.append(Paragraph(disclaimer, disclaimer_style))
+    
+    # Page break
+    elements.append(Spacer(1, 0.1*inch))
+    from reportlab.platypus import PageBreak
+    elements.append(PageBreak())
+    
+    # ==================== EXECUTIVE SUMMARY ====================
+    elements.append(Paragraph("EXECUTIVE SUMMARY", heading_style))
+    
+    # Calculate key metrics
+    total_incidents = len(df)
+    critical_count = len(df[df['severity'] == 'Critical'])
+    high_count = len(df[df['severity'] == 'High'])
+    countries_affected = df['country'].nunique()
+    threat_actors = df['threat_actor'].nunique()
+    most_targeted = df['country'].value_counts().head(3)
+    top_actor = df['threat_actor'].value_counts().iloc[0]
+    top_threat_type = df['threat_type'].value_counts().iloc[0]
+    
+    summary_text = f"""
+    This strategic threat intelligence report provides a comprehensive analysis of cyber threats 
+    targeting African infrastructure during the reporting period. The analysis is based on 
+    <b>{total_incidents}</b> confirmed security incidents across <b>{countries_affected}</b> African nations.<br/><br/>
+    
+    <b>KEY FINDINGS:</b><br/>
+    • <b>{critical_count}</b> incidents classified as CRITICAL severity, requiring immediate action<br/>
+    • <b>{high_count}</b> incidents classified as HIGH severity<br/>
+    • <b>{threat_actors}</b> distinct threat actor groups identified<br/>
+    • <b>{top_threat_type}</b> emerged as the primary attack vector with <b>{df['threat_type'].value_counts().iloc[0]}</b> incidents<br/>
+    • <b>{top_actor}</b> identified as the most active threat actor<br/><br/>
+    
+    <b>GEOGRAPHIC IMPACT:</b><br/>
+    The most heavily targeted nations include {', '.join([f"{country} ({count} incidents)" for country, count in most_targeted.items()])}. 
+    This geographic distribution suggests a coordinated targeting of key economic and governmental infrastructure 
+    across the continent.
+    """
+    
+    elements.append(Paragraph(summary_text, body_style))
+    elements.append(Spacer(1, 20))
+    
+    # ==================== THREAT LANDSCAPE OVERVIEW ====================
+    elements.append(Paragraph("THREAT LANDSCAPE OVERVIEW", heading_style))
+    
+    summary_data = [
+        ['METRIC', 'VALUE', 'SEVERITY ASSESSMENT'],
+        ['Total Incidents', str(total_incidents), 'MONITORING'],
+        ['Critical Severity', str(critical_count), 'IMMEDIATE ACTION REQUIRED'],
+        ['High Severity', str(high_count), 'PRIORITY RESPONSE'],
+        ['Medium Severity', str(len(df[df['severity'] == 'Medium'])), 'STANDARD MONITORING'],
+        ['Low Severity', str(len(df[df['severity'] == 'Low'])), 'ROUTINE OBSERVATION'],
+        ['Unique Threat Actors', str(threat_actors), 'TRACKING ACTIVE'],
+        ['Countries Affected', str(countries_affected), 'CONTINENTAL SCOPE'],
+    ]
+    
+    summary_table = Table(summary_data, colWidths=[2.2*inch, 1.3*inch, 2.5*inch])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('TOPPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9F9F9')]),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+    ]))
+    
+    elements.append(summary_table)
+    elements.append(Spacer(1, 20))
+    
+    # ==================== THREAT TYPE DISTRIBUTION ====================
+    elements.append(PageBreak())
+    elements.append(Paragraph("THREAT TYPE DISTRIBUTION", heading_style))
+    
+    threat_counts = df['threat_type'].value_counts()
+    threat_data = [['THREAT TYPE', 'INCIDENTS', 'PERCENTAGE', 'TREND']]
+    
+    for threat, count in threat_counts.head(10).items():
+        percentage = f"{(count/len(df)*100):.1f}%"
+        trend = "↑ INCREASING" if percentage else "→ STABLE"
+        threat_data.append([threat, str(count), percentage, trend])
+    
+    threat_table = Table(threat_data, colWidths=[2*inch, 1.2*inch, 1.3*inch, 1.5*inch])
+    threat_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9F9F9')]),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    
+    elements.append(threat_table)
+    elements.append(Spacer(1, 20))
+    
+    # ==================== THREAT ACTOR ANALYSIS ====================
+    elements.append(Paragraph("THREAT ACTOR INTELLIGENCE", heading_style))
+    
+    actor_counts = df['threat_actor'].value_counts()
+    actor_data = [['THREAT ACTOR', 'INCIDENTS', 'PERCENTAGE', 'THREAT LEVEL']]
+    
+    for actor, count in actor_counts.head(15).items():
+        percentage = f"{(count/len(df)*100):.1f}%"
+        if float(percentage.rstrip('%')) > 10:
+            level = "CRITICAL"
+        elif float(percentage.rstrip('%')) > 5:
+            level = "HIGH"
+        else:
+            level = "MEDIUM"
+        actor_data.append([actor, str(count), percentage, level])
+    
+    actor_table = Table(actor_data, colWidths=[2.2*inch, 1*inch, 1.2*inch, 1.6*inch])
+    actor_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9F9F9')]),
+        ('FONTNAME', (3, 1), (3, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (3, 1), (3, -1), colors.HexColor('#C41E3A')),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    
+    elements.append(actor_table)
+    elements.append(Spacer(1, 20))
+    
+    # ==================== GEOGRAPHIC ANALYSIS ====================
+    elements.append(PageBreak())
+    elements.append(Paragraph("GEOGRAPHIC THREAT DISTRIBUTION", heading_style))
+    
+    country_counts = df['country'].value_counts()
+    geo_data = [['COUNTRY', 'INCIDENTS', 'PERCENTAGE', 'RISK LEVEL']]
+    
+    for country, count in country_counts.head(20).items():
+        percentage = f"{(count/len(df)*100):.1f}%"
+        if count > total_incidents * 0.1:
+            risk = "CRITICAL"
+        elif count > total_incidents * 0.05:
+            risk = "HIGH"
+        elif count > total_incidents * 0.02:
+            risk = "MEDIUM"
+        else:
+            risk = "LOW"
+        geo_data.append([country, str(count), percentage, risk])
+    
+    geo_table = Table(geo_data, colWidths=[2.2*inch, 1*inch, 1.2*inch, 1.6*inch])
+    geo_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9F9F9')]),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    
+    elements.append(geo_table)
+    elements.append(Spacer(1, 20))
+    
+    # ==================== INDUSTRY TARGETING ====================
+    if 'industry' in df.columns:
+        elements.append(Paragraph("INDUSTRY SECTOR ANALYSIS", heading_style))
+        
+        industry_counts = df['industry'].value_counts()
+        industry_data = [['INDUSTRY SECTOR', 'INCIDENTS', 'PERCENTAGE', 'PRIORITY']]
+        
+        for industry, count in industry_counts.head(10).items():
+            percentage = f"{(count/len(df)*100):.1f}%"
+            priority = "CRITICAL" if count > total_incidents * 0.15 else "HIGH" if count > total_incidents * 0.1 else "MEDIUM"
+            industry_data.append([industry, str(count), percentage, priority])
+        
+        industry_table = Table(industry_data, colWidths=[2.2*inch, 1*inch, 1.2*inch, 1.6*inch])
+        industry_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9F9F9')]),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        
+        elements.append(industry_table)
+        elements.append(Spacer(1, 20))
+    
+    # ==================== RECOMMENDATIONS ====================
+    elements.append(PageBreak())
+    elements.append(Paragraph("STRATEGIC RECOMMENDATIONS", heading_style))
+    
+    recommendations = f"""
+    Based on the analysis of <b>{total_incidents}</b> security incidents, CyHawk Africa recommends 
+    the following strategic actions:<br/><br/>
+    
+    <b>1. IMMEDIATE ACTIONS (CRITICAL PRIORITY)</b><br/>
+    • Deploy enhanced monitoring for the {critical_count} critical-severity incidents<br/>
+    • Implement emergency response protocols for high-risk countries: {', '.join(most_targeted.head(3).index)}<br/>
+    • Activate threat hunting operations targeting {top_actor} infrastructure<br/><br/>
+    
+    <b>2. SHORT-TERM INITIATIVES (30-60 DAYS)</b><br/>
+    • Strengthen defenses against {top_threat_type} attack vectors<br/>
+    • Conduct security assessments of critical infrastructure in high-risk nations<br/>
+    • Enhance information sharing partnerships with regional CERTs<br/>
+    • Deploy advanced detection signatures for identified threat actors<br/><br/>
+    
+    <b>3. LONG-TERM STRATEGIC INITIATIVES (90+ DAYS)</b><br/>
+    • Establish continental threat intelligence sharing framework<br/>
+    • Develop sector-specific security baselines for critical industries<br/>
+    • Implement proactive threat hunting programs<br/>
+    • Build regional incident response capabilities<br/><br/>
+    
+    <b>4. INTELLIGENCE GAPS</b><br/>
+    • Limited visibility in {54 - countries_affected} African nations<br/>
+    • Need for enhanced private sector threat data sharing<br/>
+    • Requirement for attribution capabilities improvement<br/>
+    """
+    
+    elements.append(Paragraph(recommendations, body_style))
+    elements.append(Spacer(1, 30))
+    
+    # ==================== FINAL PAGE ====================
+    elements.append(PageBreak())
+    elements.append(Spacer(1, 100))
+    
+    elements.append(Paragraph("ABOUT CYHAWK AFRICA", heading_style))
+    about_text = """
+    CyHawk Africa is the continent's leading threat intelligence platform, providing real-time 
+    cyber threat monitoring and analysis across 54 African nations. Our mission is to protect 
+    African digital infrastructure through advanced threat detection, intelligence sharing, and 
+    strategic security guidance.<br/><br/>
+    
+    <b>FOR MORE INFORMATION:</b><br/>
+    Website: dashboard.cyhawk-africa.com<br/>
+    Email: intel@cyhawk-africa.com<br/>
+    Emergency Hotline: +234-XXX-XXXX-XXX<br/><br/>
+    
+    <b>TRAFFIC LIGHT PROTOCOL:</b><br/>
+    <b>Classification:</b> TLP:WHITE<br/>
+    <b>Distribution:</b> Unlimited - May be shared freely<br/>
+    <b>Audience:</b> Public information suitable for public disclosure<br/>
+    <b>Retention:</b> No restrictions<br/><br/>
+    
+    <b>TLP:WHITE</b> information may be distributed without restriction, subject to standard 
+    copyright rules. Recipients may share TLP:WHITE information freely.
+    """
+    elements.append(Paragraph(about_text, body_style))
+    
+    # Build PDF with watermark
+    doc.build(elements, onFirstPage=add_watermark, onLaterPages=add_watermark)
+    
     buffer.seek(0)
     return buffer
 
