@@ -1132,23 +1132,34 @@ with col1:
     ransomware_df = filtered_df[filtered_df['threat_type'] == 'Ransomware']
     ransomware_actors = ransomware_df['threat_actor'].value_counts().head(10)
     
+    # Gradient colors from dark red to light red
+    colors_list = ['#8B0000', '#A52A2A', '#B22222', '#CD5C5C', '#DC143C', 
+                   '#E74C3C', '#F08080', '#FA8072', '#FFA07A', '#FFB6C1']
+    
     fig1 = go.Figure(go.Bar(
         y=ransomware_actors.index,
         x=ransomware_actors.values,
         orientation='h',
-        marker=dict(color='#C41E3A'),
+        marker=dict(
+            color=colors_list[:len(ransomware_actors)],
+            line=dict(color='rgba(0,0,0,0.3)', width=1)
+        ),
         hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
     ))
     
     fig1.update_layout(
         height=300, margin=dict(l=20, r=20, t=20, b=20),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
-        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text']),
-        font=dict(color=C['text'])
+        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text'], fixedrange=True),
+        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text'], fixedrange=True),
+        font=dict(color=C['text']),
+        dragmode=False
     )
     
-    st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig1, use_container_width=True, config={
+        'displayModeBar': False,
+        'staticPlot': True
+    })
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col2:
@@ -1162,26 +1173,44 @@ with col2:
     
     threat_counts = filtered_df['threat_type'].value_counts().head(10)
     
-    colors_map = {'Ransomware': '#C41E3A', 'Phishing': '#FF9800', 'DDoS': '#FFEB3B', 
-                  'Malware': '#00E676', 'Data Breach': '#00BCD4'}
+    # Enhanced color palette for threat types
+    colors_map = {
+        'Ransomware': '#C41E3A',
+        'Phishing': '#FF9800', 
+        'DDoS': '#FFEB3B',
+        'Malware': '#00E676',
+        'Data Breach': '#00BCD4',
+        'Database': '#9C27B0',
+        'Credential': '#E91E63',
+        'Vulnerability': '#2196F3',
+        'Defacement': '#FF5722',
+        'Unknown': '#757575'
+    }
     bar_colors = [colors_map.get(t, '#999999') for t in threat_counts.index]
     
     fig2 = go.Figure(go.Bar(
         x=threat_counts.index,
         y=threat_counts.values,
-        marker=dict(color=bar_colors),
+        marker=dict(
+            color=bar_colors,
+            line=dict(color='rgba(0,0,0,0.3)', width=1)
+        ),
         hovertemplate='<b>%{x}</b><br>Count: %{y}<extra></extra>'
     ))
     
     fig2.update_layout(
         height=300, margin=dict(l=20, r=20, t=20, b=40),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text'], tickangle=-45),
-        yaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
-        font=dict(color=C['text'])
+        xaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text'], tickangle=-45, fixedrange=True),
+        yaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text'], fixedrange=True),
+        font=dict(color=C['text']),
+        dragmode=False
     )
     
-    st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig2, use_container_width=True, config={
+        'displayModeBar': False,
+        'staticPlot': True
+    })
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════
@@ -1200,23 +1229,34 @@ with col3:
     
     class_counts = filtered_df['threat_type'].value_counts()
     
+    # Blue gradient colors
+    blue_colors = ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3',
+                   '#42A5F5', '#64B5F6', '#90CAF9', '#BBDEFB', '#E3F2FD']
+    
     fig3 = go.Figure(go.Bar(
         y=class_counts.index,
         x=class_counts.values,
         orientation='h',
-        marker=dict(color='#C41E3A'),
+        marker=dict(
+            color=blue_colors[:len(class_counts)],
+            line=dict(color='rgba(0,0,0,0.3)', width=1)
+        ),
         hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
     ))
     
     fig3.update_layout(
         height=300, margin=dict(l=20, r=20, t=20, b=20),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
-        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text']),
-        font=dict(color=C['text'])
+        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text'], fixedrange=True),
+        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text'], fixedrange=True),
+        font=dict(color=C['text']),
+        dragmode=False
     )
     
-    st.plotly_chart(fig3, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig3, use_container_width=True, config={
+        'displayModeBar': False,
+        'staticPlot': True
+    })
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col4:
@@ -1229,25 +1269,40 @@ with col4:
     """, unsafe_allow_html=True)
     
     sev_counts = filtered_df['severity'].value_counts()
-    sev_colors = {'Critical': '#9C27B0', 'Medium': '#FFA726', 'High': '#C41E3A', 'Low': '#66BB6A', 'Unknown': '#757575'}
+    
+    # Severity-specific colors with borders
+    sev_colors = {
+        'Critical': '#D32F2F',   # Dark Red
+        'High': '#F57C00',       # Dark Orange  
+        'Medium': '#FBC02D',     # Yellow
+        'Low': '#388E3C',        # Green
+        'Unknown': '#757575'     # Gray
+    }
     sev_bar_colors = [sev_colors.get(s, '#999999') for s in sev_counts.index]
     
     fig4 = go.Figure(go.Bar(
         x=sev_counts.index,
         y=sev_counts.values,
-        marker=dict(color=sev_bar_colors),
+        marker=dict(
+            color=sev_bar_colors,
+            line=dict(color='rgba(0,0,0,0.3)', width=1)
+        ),
         hovertemplate='<b>%{x}</b><br>Count: %{y}<extra></extra>'
     ))
     
     fig4.update_layout(
         height=300, margin=dict(l=20, r=20, t=20, b=20),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text']),
-        yaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
-        font=dict(color=C['text'])
+        xaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text'], fixedrange=True),
+        yaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text'], fixedrange=True),
+        font=dict(color=C['text']),
+        dragmode=False
     )
     
-    st.plotly_chart(fig4, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig4, use_container_width=True, config={
+        'displayModeBar': False,
+        'staticPlot': True
+    })
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════
@@ -1268,21 +1323,25 @@ fig5 = go.Figure(go.Scatter(
     x=timeline_df['date'],
     y=timeline_df['count'],
     mode='lines',
-    line=dict(color='#C41E3A', width=2),
+    line=dict(color='#00BCD4', width=3),  # Cyan line
     fill='tozeroy',
-    fillcolor='rgba(196, 30, 58, 0.1)',
+    fillcolor='rgba(0, 188, 212, 0.2)',  # Cyan fill
     hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Count: %{y}<extra></extra>'
 ))
 
 fig5.update_layout(
     height=250, margin=dict(l=20, r=20, t=20, b=20),
     paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-    xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
-    yaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
-    font=dict(color=C['text'])
+    xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text'], fixedrange=True),
+    yaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text'], fixedrange=True),
+    font=dict(color=C['text']),
+    dragmode=False
 )
 
-st.plotly_chart(fig5, use_container_width=True, config={'displayModeBar': False})
+st.plotly_chart(fig5, use_container_width=True, config={
+    'displayModeBar': False,
+    'staticPlot': True
+})
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════
@@ -1301,23 +1360,34 @@ with col5:
     
     top_actors = filtered_df['threat_actor'].value_counts().head(10)
     
+    # Green gradient colors
+    green_colors = ['#1B5E20', '#2E7D32', '#388E3C', '#43A047', '#4CAF50',
+                    '#66BB6A', '#81C784', '#A5D6A7', '#C8E6C9', '#E8F5E9']
+    
     fig6 = go.Figure(go.Bar(
         y=top_actors.index,
         x=top_actors.values,
         orientation='h',
-        marker=dict(color='#C41E3A'),
+        marker=dict(
+            color=green_colors[:len(top_actors)],
+            line=dict(color='rgba(0,0,0,0.3)', width=1)
+        ),
         hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
     ))
     
     fig6.update_layout(
         height=300, margin=dict(l=20, r=20, t=20, b=20),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
-        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text']),
-        font=dict(color=C['text'])
+        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text'], fixedrange=True),
+        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text'], fixedrange=True),
+        font=dict(color=C['text']),
+        dragmode=False
     )
     
-    st.plotly_chart(fig6, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig6, use_container_width=True, config={
+        'displayModeBar': False,
+        'staticPlot': True
+    })
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col6:
@@ -1331,23 +1401,34 @@ with col6:
     
     industries = filtered_df['industry'].value_counts().head(10)
     
+    # Purple gradient colors
+    purple_colors = ['#4A148C', '#6A1B9A', '#7B1FA2', '#8E24AA', '#9C27B0',
+                     '#AB47BC', '#BA68C8', '#CE93D8', '#E1BEE7', '#F3E5F5']
+    
     fig7 = go.Figure(go.Bar(
         y=industries.index,
         x=industries.values,
         orientation='h',
-        marker=dict(color='#C41E3A'),
+        marker=dict(
+            color=purple_colors[:len(industries)],
+            line=dict(color='rgba(0,0,0,0.3)', width=1)
+        ),
         hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
     ))
     
     fig7.update_layout(
         height=300, margin=dict(l=20, r=20, t=20, b=20),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
-        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text']),
-        font=dict(color=C['text'])
+        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text'], fixedrange=True),
+        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text'], fixedrange=True),
+        font=dict(color=C['text']),
+        dragmode=False
     )
     
-    st.plotly_chart(fig7, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig7, use_container_width=True, config={
+        'displayModeBar': False,
+        'staticPlot': True
+    })
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════
