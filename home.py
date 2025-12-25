@@ -990,10 +990,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-with st.sidebar:
-    if st.button("🌓", use_container_width=True, key="theme_toggle_home"):
-        toggle_theme()
-        st.rerun()
 
 # ═══════════════════════════════════════════════════════════
 # HERO
