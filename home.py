@@ -809,6 +809,23 @@ st.markdown(f"""
 
 @keyframes pulse {{ 0%, 100% {{ opacity: 1; }} 50% {{ opacity: 0.5; }} }}
 
+.stButton > button {{
+    background: {C['cyhawk_red']} !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 0.5rem 1rem !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    transition: all 0.3s !important;
+}}
+
+.stButton > button:hover {{
+    background: #A01830 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(196, 30, 58, 0.4) !important;
+}}
+
 .hero-label {{
     color: {C['cyhawk_red']}; font-size: 0.75rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;
@@ -989,6 +1006,13 @@ st.markdown(f"""
 <p class="hero-subtitle">Real-time cyber threat monitoring across African nations</p>
 """, unsafe_allow_html=True)
 
+# Theme toggle button in header
+col1, col2, col3 = st.columns([6, 1, 1])
+with col3:
+    if st.button("🌓 Theme", use_container_width=True, key="theme_toggle_home"):
+        toggle_theme()
+        st.rerun()
+        
 # ═══════════════════════════════════════════════════════════
 # FILTERS
 # ═══════════════════════════════════════════════════════════
