@@ -86,79 +86,140 @@ COUNTRY_ISO = {
 # ═══════════════════════════════════════════════════════════
 @st.cache_data(ttl=300)
 def load_data():
-    """Load incidents data from CSV with robust fallback"""
+    """Load incidents data from CSV - REQUIRED"""
+    
+    # Try to find CSV file
+    csv_paths = ['data/incidents.csv', '../data/incidents.csv', 'incidents.csv']
+    csv_path = None
+    
+    for path in csv_paths:
+        if os.path.exists(path):
+            csv_path = path
+            break
+    
+    if not csv_path:
+        st.error("⚠️ **ERROR: incidents.csv file not found!**")
+        st.info("""
+        **Required CSV file location:** `data/incidents.csv`
+        
+        **Required columns:**
+        - `date` - Date of incident (YYYY-MM-DD format)
+        - `actor` - Name of threat actor/group
+        - `country` - African country name
+        - `threat_type` - Type of threat (Database, DDoS, etc.)
+        - `sector` - Target industry/sector
+        - `severity` - Severity level (Critical, High, Medium, Low)
+        - `source` - Source of information
+        
+        **Example CSV format:**
+        ```
+        date,actor,country,threat_type,sector,severity,source
+        2025-09-03,ifalcon,Sudan,Database,Telecommunications,Medium,Dark Web
+        2025-09-03,Keymous Plus,Morocco,DDoS,Government,Medium,Telegram
+        ```
+        
+        Please add the incidents.csv file to the `data/` directory and refresh the page.
+        """)
+        st.stop()
     
     try:
-        csv_path = None
-        if os.path.exists('data/incidents.csv'):
-            csv_path = 'data/incidents.csv'
-        elif os.path.exists('../data/incidents.csv'):
-            csv_path = '../data/incidents.csv'
-        elif os.path.exists('incidents.csv'):
-            csv_path = 'incidents.csv'
+        # Load CSV
+        df = pd.read_csv(csv_path)
         
-        if csv_path:
-            df = pd.read_csv(csv_path)
+        # Map your column names to our expected names
+        column_mapping = {
+            'actor': 'threat_actor',
+            'threat_type': 'threat_type',
+            'sector': 'industry',
+            'severity': 'severity',
+            'country': 'country',
+            'date': 'date',
+            'source': 'source'
+        }
+        
+        # Check which columns exist and map them
+        existing_mapping = {}
+        for old_name, new_name in column_mapping.items():
+            if old_name in df.columns:
+                existing_mapping[old_name] = new_name
+        
+        # Rename columns
+        df = df.rename(columns=existing_mapping)
+        
+        # Validate required columns (after mapping)
+        required_columns = ['date', 'country', 'threat_actor', 'threat_type', 'severity']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            st.error(f"⚠️ **ERROR: Missing required columns in CSV file!**")
+            st.info(f"""
+            **Missing columns:** {', '.join(missing_columns)}
             
-            # Process dates
-            if 'date' in df.columns:
-                df['date'] = pd.to_datetime(df['date'], errors='coerce')
-                df = df.dropna(subset=['date'])
-            else:
-                df['date'] = pd.date_range(end=datetime.now(), periods=len(df), freq='D')
+            **Required columns (your CSV format):**
+            - `date` - Date of incident (YYYY-MM-DD format)
+            - `actor` - Name of threat actor/group
+            - `country` - African country name
+            - `threat_type` - Type of threat (Database, DDoS, etc.)
+            - `sector` - Target industry/sector
+            - `severity` - Severity level (Critical, High, Medium, Low)
+            - `source` - Source of information (optional)
             
-            df['year'] = df['date'].dt.year
-            df['month'] = df['date'].dt.strftime('%B')
+            **Your CSV has these columns:** {', '.join(df.columns.tolist())}
             
-            # Ensure required columns
-            if 'country' not in df.columns:
-                df['country'] = random.choices(list(COUNTRY_ISO.keys()), k=len(df))
-            if 'threat_actor' not in df.columns:
-                df['threat_actor'] = random.choices(['LockBit', 'BlackCat', 'Play', 'Cl0p', 'Royal'], k=len(df))
-            if 'threat_type' not in df.columns:
-                df['threat_type'] = random.choices(['Ransomware', 'Phishing', 'DDoS', 'Malware'], k=len(df))
-            if 'severity' not in df.columns:
-                df['severity'] = random.choices(['Critical', 'High', 'Medium', 'Low'], k=len(df))
-            if 'industry' not in df.columns:
-                df['industry'] = random.choices(['Financial', 'Healthcare', 'Government', 'Energy'], k=len(df))
-            
-            df = df.dropna(subset=['country', 'threat_actor', 'threat_type', 'severity'])
-            return df
-        else:
-            raise FileNotFoundError("CSV not found")
-    
-    except:
-        return generate_sample_data()
-
-def generate_sample_data():
-    """Generate comprehensive sample data"""
-    dates = pd.date_range(end=datetime.now(), periods=800, freq='D')
-    
-    df = pd.DataFrame({
-        'date': random.choices(dates, k=800),
-        'country': random.choices(list(COUNTRY_ISO.keys()), k=800),
-        'threat_actor': random.choices([
-            'LockBit', 'BlackCat', 'Play', 'Cl0p', 'Royal', 'BianLian', 
-            'Medusa', 'Akira', 'NoEscape', '8Base', 'Rhysida', 'Hunters',
-            'ALPHV', 'Conti', 'Hive'
-        ], k=800),
-        'threat_type': random.choices([
-            'Ransomware', 'Phishing', 'DDoS', 'Malware', 'Data Breach',
-            'Credential', 'Vulnerability', 'Defacement', 'Unknown'
-        ], weights=[30, 25, 15, 10, 10, 5, 3, 1, 1], k=800),
-        'severity': random.choices([
-            'Critical', 'High', 'Medium', 'Low', 'Unknown'
-        ], weights=[15, 30, 35, 15, 5], k=800),
-        'industry': random.choices([
-            'Financial', 'Healthcare', 'Government', 'Energy', 'Technology',
-            'Telecommunications', 'Education', 'Agriculture', 'Sport', 'Retail'
-        ], k=800)
-    })
-    
-    df['year'] = df['date'].dt.year
-    df['month'] = df['date'].dt.strftime('%B')
-    
-    return df
+            Please update your CSV file with all required columns.
+            """)
+            st.stop()
+        
+        # Process date column
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        
+        # Check for invalid dates
+        invalid_dates = df['date'].isna().sum()
+        if invalid_dates > 0:
+            st.warning(f"⚠️ Warning: {invalid_dates} rows have invalid dates and will be removed.")
+        
+        df = df.dropna(subset=['date'])
+        
+        if len(df) == 0:
+            st.error("⚠️ **ERROR: No valid data in CSV file after processing!**")
+            st.info("Please check that your CSV file contains valid dates in YYYY-MM-DD format.")
+            st.stop()
+        
+        # Add derived columns
+        df['year'] = df['date'].dt.year
+        df['month'] = df['date'].dt.strftime('%B')
+        
+        # Add industry column if missing (it's mapped from 'sector')
+        if 'industry' not in df.columns:
+            df['industry'] = 'Unknown'
+        
+        # Clean up data - remove rows with missing critical data
+        initial_count = len(df)
+        df = df.dropna(subset=['country', 'threat_actor', 'threat_type', 'severity'])
+        removed_count = initial_count - len(df)
+        
+        if removed_count > 0:
+            st.warning(f"⚠️ Warning: Removed {removed_count} rows with missing data.")
+        
+        if len(df) == 0:
+            st.error("⚠️ **ERROR: No valid data remaining after cleanup!**")
+            st.stop()
+        
+        # Success message
+        st.success(f"✅ Successfully loaded {len(df)} incidents from {csv_path}")
+        
+        return df
+        
+    except Exception as e:
+        st.error(f"⚠️ **ERROR loading CSV file:** {str(e)}")
+        st.info("""
+        Please check that:
+        1. The CSV file is properly formatted
+        2. All required columns are present: date, actor, country, threat_type, sector, severity
+        3. The file is not corrupted
+        4. Dates are in YYYY-MM-DD format
+        """)
+        st.stop()
 
 def filter_data(df, year, month, country, threat_type, threat_actor, severity):
     """Apply all filters"""
@@ -206,6 +267,7 @@ def process_map_data(df):
         })
     
     return pd.DataFrame(map_data)
+
 
 # ═══════════════════════════════════════════════════════════
 # PDF EXPORT - COMPREHENSIVE STRATEGIC THREAT INTELLIGENCE REPORT
