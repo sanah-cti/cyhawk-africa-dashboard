@@ -1009,7 +1009,7 @@ st.markdown(f"""
 # Theme toggle button in header
 col1, col2, col3 = st.columns([6, 1, 1])
 with col3:
-    if st.button("🌓 Theme", use_container_width=True, key="theme_toggle_home"):
+    if st.button("🌓", use_container_width=True, key="theme_toggle_home"):
         toggle_theme()
         st.rerun()
         
