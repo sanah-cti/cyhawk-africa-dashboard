@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import datetime
+import plotly.express as px
+from datetime import datetime, timedelta
 import os
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -81,14 +82,13 @@ COUNTRY_ISO = {
 }
 
 # ═══════════════════════════════════════════════════════════
-# DATA LOADING WITH ERROR HANDLING
+# DATA LOADING
 # ═══════════════════════════════════════════════════════════
 @st.cache_data(ttl=300)
 def load_data():
     """Load incidents data from CSV with robust fallback"""
     
     try:
-        # Try to load CSV
         csv_path = None
         if os.path.exists('data/incidents.csv'):
             csv_path = 'data/incidents.csv'
@@ -100,61 +100,59 @@ def load_data():
         if csv_path:
             df = pd.read_csv(csv_path)
             
-            # Convert date column
+            # Process dates
             if 'date' in df.columns:
                 df['date'] = pd.to_datetime(df['date'], errors='coerce')
                 df = df.dropna(subset=['date'])
-                df['year'] = df['date'].dt.year
-                df['month'] = df['date'].dt.strftime('%B')
             else:
-                # Add date columns if missing
                 df['date'] = pd.date_range(end=datetime.now(), periods=len(df), freq='D')
-                df['year'] = df['date'].dt.year
-                df['month'] = df['date'].dt.strftime('%B')
             
-            # Ensure required columns exist
+            df['year'] = df['date'].dt.year
+            df['month'] = df['date'].dt.strftime('%B')
+            
+            # Ensure required columns
             if 'country' not in df.columns:
                 df['country'] = random.choices(list(COUNTRY_ISO.keys()), k=len(df))
-            
             if 'threat_actor' not in df.columns:
-                df['threat_actor'] = random.choices(['LockBit', 'BlackCat', 'Play', 'Cl0p', 'Royal', 'BianLian'], k=len(df))
-            
+                df['threat_actor'] = random.choices(['LockBit', 'BlackCat', 'Play', 'Cl0p', 'Royal'], k=len(df))
             if 'threat_type' not in df.columns:
-                df['threat_type'] = random.choices(['Ransomware', 'Phishing', 'DDoS', 'Malware', 'Data Breach'], k=len(df))
-            
+                df['threat_type'] = random.choices(['Ransomware', 'Phishing', 'DDoS', 'Malware'], k=len(df))
             if 'severity' not in df.columns:
                 df['severity'] = random.choices(['Critical', 'High', 'Medium', 'Low'], k=len(df))
+            if 'industry' not in df.columns:
+                df['industry'] = random.choices(['Financial', 'Healthcare', 'Government', 'Energy'], k=len(df))
             
-            # Clean up data
             df = df.dropna(subset=['country', 'threat_actor', 'threat_type', 'severity'])
-            
             return df
-        
         else:
             raise FileNotFoundError("CSV not found")
     
-    except Exception as e:
-        # Generate sample data as fallback
-        st.info(f"ℹ️ Loading sample data: {str(e)}")
+    except:
         return generate_sample_data()
 
 def generate_sample_data():
-    """Generate sample threat data"""
-    dates = pd.date_range(end=datetime.now(), periods=500, freq='D')
+    """Generate comprehensive sample data"""
+    dates = pd.date_range(end=datetime.now(), periods=800, freq='D')
     
     df = pd.DataFrame({
-        'date': random.choices(dates, k=500),
-        'country': random.choices(list(COUNTRY_ISO.keys()), k=500),
+        'date': random.choices(dates, k=800),
+        'country': random.choices(list(COUNTRY_ISO.keys()), k=800),
         'threat_actor': random.choices([
             'LockBit', 'BlackCat', 'Play', 'Cl0p', 'Royal', 'BianLian', 
-            'Medusa', 'Akira', 'NoEscape', '8Base', 'Rhysida', 'Hunters'
-        ], k=500),
+            'Medusa', 'Akira', 'NoEscape', '8Base', 'Rhysida', 'Hunters',
+            'ALPHV', 'Conti', 'Hive'
+        ], k=800),
         'threat_type': random.choices([
-            'Ransomware', 'Phishing', 'DDoS', 'Malware', 'Data Breach'
-        ], k=500),
+            'Ransomware', 'Phishing', 'DDoS', 'Malware', 'Data Breach',
+            'Credential', 'Vulnerability', 'Defacement', 'Unknown'
+        ], weights=[30, 25, 15, 10, 10, 5, 3, 1, 1], k=800),
         'severity': random.choices([
-            'Critical', 'High', 'Medium', 'Low'
-        ], weights=[1, 2, 3, 2], k=500),
+            'Critical', 'High', 'Medium', 'Low', 'Unknown'
+        ], weights=[15, 30, 35, 15, 5], k=800),
+        'industry': random.choices([
+            'Financial', 'Healthcare', 'Government', 'Energy', 'Technology',
+            'Telecommunications', 'Education', 'Agriculture', 'Sport', 'Retail'
+        ], k=800)
     })
     
     df['year'] = df['date'].dt.year
@@ -163,49 +161,40 @@ def generate_sample_data():
     return df
 
 def filter_data(df, year, month, country, threat_type, threat_actor, severity):
-    """Apply all filters to dataframe"""
+    """Apply all filters"""
     filtered = df.copy()
     
     if year != "All Years":
         filtered = filtered[filtered['year'] == int(year)]
-    
     if month != "All Months":
         filtered = filtered[filtered['month'] == month]
-    
     if country != "All Countries":
         filtered = filtered[filtered['country'] == country]
-    
     if threat_type != "All Types":
         filtered = filtered[filtered['threat_type'] == threat_type]
-    
     if threat_actor != "All Actors":
         filtered = filtered[filtered['threat_actor'] == threat_actor]
-    
     if severity != "All Severities":
         filtered = filtered[filtered['severity'] == severity]
     
     return filtered
 
 def process_map_data(df):
-    """Process data for choropleth map"""
+    """Process data for map"""
     map_data = []
     
     for country, iso in COUNTRY_ISO.items():
         country_df = df[df['country'] == country]
         attacks = len(country_df)
         
-        # Get top 5 threat actors
         top_actors = []
-        if not country_df.empty and 'threat_actor' in country_df.columns:
-            actor_counts = country_df['threat_actor'].value_counts().head(5)
-            for actor, count in actor_counts.items():
+        if not country_df.empty:
+            for actor, count in country_df['threat_actor'].value_counts().head(5).items():
                 top_actors.append({'name': str(actor), 'count': int(count)})
         
-        # Get top 3 threat types
         threat_types = []
-        if not country_df.empty and 'threat_type' in country_df.columns:
-            type_counts = country_df['threat_type'].value_counts().head(3)
-            for ttype, count in type_counts.items():
+        if not country_df.empty:
+            for ttype, count in country_df['threat_type'].value_counts().head(3).items():
                 threat_types.append({'type': str(ttype), 'count': int(count)})
         
         map_data.append({
@@ -219,17 +208,16 @@ def process_map_data(df):
     return pd.DataFrame(map_data)
 
 # ═══════════════════════════════════════════════════════════
-# PDF EXPORT FUNCTION
+# PDF EXPORT
 # ═══════════════════════════════════════════════════════════
 def generate_pdf(df, filters):
-    """Generate professional PDF report"""
+    """Generate PDF report"""
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
     
     elements = []
     styles = getSampleStyleSheet()
     
-    # Custom title style
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
@@ -240,440 +228,191 @@ def generate_pdf(df, filters):
         fontName='Helvetica-Bold'
     )
     
-    # Add title
-    title = Paragraph("CyHawk Africa<br/>Threat Intelligence Report", title_style)
-    elements.append(title)
+    elements.append(Paragraph("CyHawk Africa<br/>Threat Intelligence Report", title_style))
     elements.append(Spacer(1, 12))
     
-    # Report metadata
     meta_style = ParagraphStyle('Meta', parent=styles['Normal'], fontSize=10, textColor=colors.grey)
-    meta_text = f"""
-    Generated: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}<br/>
-    Total Incidents in Report: {len(df)}<br/>
-    Report Period: {df['date'].min().strftime('%Y-%m-%d')} to {df['date'].max().strftime('%Y-%m-%d')}
-    """
-    meta = Paragraph(meta_text, meta_style)
+    meta = Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}<br/>Total Incidents: {len(df)}", meta_style)
     elements.append(meta)
     elements.append(Spacer(1, 20))
     
-    # Filters applied
-    active_filters = [f"{k}: {v}" for k, v in filters.items() if not v.startswith("All")]
-    if active_filters:
-        filter_text = "Active Filters: " + ", ".join(active_filters)
-        filter_para = Paragraph(filter_text, styles['Normal'])
-        elements.append(filter_para)
-        elements.append(Spacer(1, 20))
-    
-    # Summary statistics table
     summary_data = [
         ['Metric', 'Value'],
         ['Total Incidents', str(len(df))],
-        ['Countries Affected', str(df['country'].nunique())],
-        ['Unique Threat Actors', str(df['threat_actor'].nunique())],
-        ['Critical Severity', str(len(df[df['severity'] == 'Critical']))],
-        ['High Severity', str(len(df[df['severity'] == 'High']))],
-        ['Medium Severity', str(len(df[df['severity'] == 'Medium']))],
-        ['Low Severity', str(len(df[df['severity'] == 'Low']))]
+        ['Countries', str(df['country'].nunique())],
+        ['Threat Actors', str(df['threat_actor'].nunique())],
+        ['Critical', str(len(df[df['severity'] == 'Critical']))],
     ]
     
-    summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
-    summary_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+    table = Table(summary_data, colWidths=[3*inch, 2*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#C41E3A')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('GRID', (0,0), (-1,-1), 1, colors.grey)
     ]))
     
-    elements.append(Paragraph("Executive Summary", styles['Heading2']))
-    elements.append(Spacer(1, 12))
-    elements.append(summary_table)
-    elements.append(Spacer(1, 30))
-    
-    # Top threat types
-    threat_counts = df['threat_type'].value_counts().head(10)
-    threat_data = [['Threat Type', 'Count', 'Percentage']]
-    for threat, count in threat_counts.items():
-        percentage = f"{(count/len(df)*100):.1f}%"
-        threat_data.append([threat, str(count), percentage])
-    
-    threat_table = Table(threat_data, colWidths=[2.5*inch, 1.5*inch, 1.5*inch])
-    threat_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
-    ]))
-    
-    elements.append(Paragraph("Threat Type Distribution", styles['Heading2']))
-    elements.append(Spacer(1, 12))
-    elements.append(threat_table)
-    elements.append(Spacer(1, 30))
-    
-    # Top threat actors
-    actor_counts = df['threat_actor'].value_counts().head(10)
-    actor_data = [['Threat Actor', 'Incidents', 'Percentage']]
-    for actor, count in actor_counts.items():
-        percentage = f"{(count/len(df)*100):.1f}%"
-        actor_data.append([actor, str(count), percentage])
-    
-    actor_table = Table(actor_data, colWidths=[2.5*inch, 1.5*inch, 1.5*inch])
-    actor_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C41E3A')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
-    ]))
-    
-    elements.append(Paragraph("Top Threat Actors", styles['Heading2']))
-    elements.append(Spacer(1, 12))
-    elements.append(actor_table)
-    
-    # Build PDF
+    elements.append(table)
     doc.build(elements)
     buffer.seek(0)
     return buffer
 
-# ═══════════════════════════════════════════════════════════
-# LOAD DATA
-# ═══════════════════════════════════════════════════════════
+# Load data
 df = load_data()
 
 # ═══════════════════════════════════════════════════════════
-# V3 MODERN MINIMALIST CSS
+# CSS STYLING
 # ═══════════════════════════════════════════════════════════
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-* {{
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    -webkit-font-smoothing: antialiased;
-}}
-
-.stApp {{
-    background: {C['bg']};
-    color: {C['text']};
-}}
-
+* {{ font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }}
+.stApp {{ background: {C['bg']}; color: {C['text']}; }}
 #MainMenu, footer, header {{ visibility: hidden; }}
 
 .stApp::before {{
-    content: '';
-    position: fixed;
-    inset: 0;
+    content: ''; position: fixed; inset: 0;
     background-image: 
         linear-gradient({C['red_glow']} 1px, transparent 1px),
         linear-gradient(90deg, {C['red_glow']} 1px, transparent 1px);
-    background-size: 50px 50px;
-    z-index: -1;
-    opacity: 0.3;
+    background-size: 50px 50px; z-index: -1; opacity: 0.3;
 }}
 
 .main-header {{
-    background: rgba(10, 10, 10, 0.95);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid {C['border']};
-    padding: 1rem 3rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px);
+    border-bottom: 1px solid {C['border']}; padding: 1rem 3rem;
+    display: flex; justify-content: space-between; align-items: center;
     margin: -6rem -6rem 2rem -6rem;
 }}
 
-.logo-section {{
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}}
-
+.logo-section {{ display: flex; align-items: center; gap: 1rem; }}
 .logo-container {{
-    width: 50px;
-    height: 50px;
-    background: {C['cyhawk_red']};
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 20px {C['red_glow']};
-    overflow: hidden;
+    width: 50px; height: 50px; background: {C['cyhawk_red']};
+    border-radius: 50%; box-shadow: 0 0 20px {C['red_glow']};
 }}
 
-.logo-container img {{
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}}
-
-.brand-text h1 {{
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: {C['text']};
-    margin: 0;
-    line-height: 1.2;
-}}
-
-.brand-highlight {{
-    color: {C['cyhawk_red']};
-    font-weight: 700;
-}}
-
+.brand-text h1 {{ font-size: 1.5rem; font-weight: 600; margin: 0; }}
+.brand-highlight {{ color: {C['cyhawk_red']}; font-weight: 700; }}
 .brand-text p {{
-    font-size: 0.75rem;
-    color: {C['text_dim']};
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin: 0;
+    font-size: 0.75rem; color: {C['text_dim']};
+    text-transform: uppercase; letter-spacing: 2px; margin: 0;
 }}
 
 .status-indicator {{
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: rgba(0, 255, 0, 0.1);
-    border: 1px solid {C['success']};
-    border-radius: 20px;
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 1rem; background: rgba(0, 255, 0, 0.1);
+    border: 1px solid {C['success']}; border-radius: 20px;
 }}
 
 .status-dot {{
-    width: 8px;
-    height: 8px;
-    background: {C['success']};
-    border-radius: 50%;
-    box-shadow: 0 0 10px {C['success']};
-    animation: pulse 2s infinite;
+    width: 8px; height: 8px; background: {C['success']};
+    border-radius: 50%; animation: pulse 2s infinite;
 }}
 
-@keyframes pulse {{
-    0%, 100% {{ opacity: 1; }}
-    50% {{ opacity: 0.5; }}
-}}
+@keyframes pulse {{ 0%, 100% {{ opacity: 1; }} 50% {{ opacity: 0.5; }} }}
 
 .hero-label {{
-    color: {C['cyhawk_red']};
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    color: {C['cyhawk_red']}; font-size: 0.75rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;
 }}
-
 .hero-label::before {{
-    content: '';
-    width: 30px;
-    height: 2px;
-    background: {C['cyhawk_red']};
+    content: ''; display: inline-block; width: 30px; height: 2px;
+    background: {C['cyhawk_red']}; margin-right: 0.5rem;
 }}
 
 .hero-title {{
-    font-size: 3.5rem;
-    font-weight: 700;
-    color: {C['text']};
-    margin-bottom: 1rem;
-    letter-spacing: -2px;
-    line-height: 1.1;
+    font-size: 3.5rem; font-weight: 700; margin-bottom: 1rem;
+    letter-spacing: -2px; line-height: 1.1;
 }}
 
-.hero-subtitle {{
-    font-size: 1.25rem;
-    color: {C['text_dim']};
-    font-weight: 400;
-    margin-bottom: 2rem;
-}}
+.hero-subtitle {{ font-size: 1.25rem; color: {C['text_dim']}; margin-bottom: 2rem; }}
 
 .map-container {{
     background: linear-gradient(135deg, {C['bg_card']} 0%, {C['bg_elevated']} 100%);
-    border: 1px solid {C['border']};
-    border-radius: 24px;
-    padding: 3rem;
-    margin-bottom: 2rem;
-    position: relative;
-    overflow: hidden;
-}}
-
-.map-container::before {{
-    content: '';
-    position: absolute;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, {C['red_glow']} 0%, transparent 70%);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    z-index: 0;
-}}
-
-.map-inner {{
-    position: relative;
-    z-index: 1;
+    border: 1px solid {C['border']}; border-radius: 24px;
+    padding: 3rem; margin-bottom: 2rem; position: relative; overflow: hidden;
 }}
 
 .stats-grid {{
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.5rem;
-    margin: 2rem 0;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem; margin: 2rem 0;
 }}
 
 .stat-card {{
-    background: {C['bg_card']};
-    border: 1px solid {C['border']};
-    border-radius: 16px;
-    padding: 1.5rem;
-    transition: all 0.3s ease;
+    background: {C['bg_card']}; border: 1px solid {C['border']};
+    border-radius: 16px; padding: 1.5rem; transition: all 0.3s;
 }}
 
-.stat-card:hover {{
-    border-color: {C['cyhawk_red']};
-    transform: translateY(-4px);
-}}
+.stat-card:hover {{ border-color: {C['cyhawk_red']}; transform: translateY(-4px); }}
 
 .stat-value {{
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: {C['cyhawk_red']};
-    margin-bottom: 0.25rem;
-    line-height: 1;
+    font-size: 2.5rem; font-weight: 700; color: {C['cyhawk_red']};
+    line-height: 1; margin-bottom: 0.25rem;
 }}
 
 .stat-label {{
-    font-size: 0.85rem;
-    color: {C['text_dim']};
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 0.85rem; color: {C['text_dim']};
+    text-transform: uppercase; letter-spacing: 1px;
 }}
 
 .legend {{
-    display: flex;
-    gap: 2rem;
-    margin-top: 2rem;
-    padding: 1.5rem 0;
-    border-top: 1px solid {C['border']};
-    flex-wrap: wrap;
+    display: flex; gap: 2rem; padding: 1.5rem 0;
+    border-top: 1px solid {C['border']}; flex-wrap: wrap;
 }}
 
-.legend-item {{
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+.legend-item {{ display: flex; align-items: center; gap: 0.75rem; }}
+.legend-dot {{ width: 12px; height: 12px; border-radius: 50%; }}
+
+.section-header {{ margin: 3rem 0 2rem 0; }}
+.section-label {{
+    color: {C['cyhawk_red']}; font-size: 0.7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.75rem;
+}}
+.section-title {{ font-size: 2rem; font-weight: 700; }}
+
+.chart-card {{
+    background: {C['bg_card']}; border: 1px solid {C['border']};
+    border-radius: 20px; padding: 2rem; margin-bottom: 2rem;
+    transition: all 0.3s;
 }}
 
-.legend-dot {{
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
+.chart-card:hover {{ border-color: rgba(196, 30, 58, 0.5); }}
+
+.chart-header {{
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 1.5rem;
 }}
 
-.legend-text {{
-    font-size: 0.9rem;
-    color: {C['text_dim']};
-    font-weight: 500;
+.chart-title {{ font-size: 1.1rem; font-weight: 600; }}
+
+.chart-badge {{
+    background: rgba(196, 30, 58, 0.1); color: {C['cyhawk_red']};
+    padding: 0.4rem 0.9rem; border-radius: 20px;
+    font-size: 0.7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
 }}
 
 .filter-container {{
-    background: {C['bg_card']};
-    border: 1px solid {C['border']};
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
+    background: {C['bg_card']}; border: 1px solid {C['border']};
+    border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem;
 }}
 
 .stSelectbox label {{
-    font-size: 0.75rem !important;
-    color: {C['text_subtle']} !important;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600 !important;
+    font-size: 0.75rem !important; color: {C['text_subtle']} !important;
+    text-transform: uppercase; letter-spacing: 1px; font-weight: 600 !important;
 }}
 
 .stButton > button {{
-    background: {C['cyhawk_red']} !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 12px !important;
-    padding: 0.75rem 1.5rem !important;
-    font-weight: 600 !important;
-    transition: all 0.2s !important;
+    background: {C['cyhawk_red']} !important; color: white !important;
+    border: none !important; border-radius: 12px !important;
+    padding: 0.75rem 1.5rem !important; font-weight: 600 !important;
 }}
 
-.stButton > button:hover {{
-    background: #9A1529 !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(196, 30, 58, 0.4) !important;
-}}
-
-.stDownloadButton > button {{
-    background: {C['bg_card']} !important;
-    color: {C['text']} !important;
-    border: 1px solid {C['border']} !important;
-    border-radius: 12px !important;
-    padding: 0.75rem 1.5rem !important;
-    font-weight: 600 !important;
-}}
-
-.stDownloadButton > button:hover {{
-    border-color: {C['cyhawk_red']} !important;
-    background: {C['bg_elevated']} !important;
-}}
-
-.block-container {{
-    padding-top: 1rem;
-    padding-bottom: 0rem;
-    max-width: 1400px;
-}}
-
-.stColumn {{
-    padding: 0 0.5rem;
-}}
-
-@media (max-width: 1024px) {{
-    .stats-grid {{
-        grid-template-columns: repeat(2, 1fr);
-    }}
-    .hero-title {{
-        font-size: 2.5rem;
-    }}
-}}
+.block-container {{ padding-top: 1rem; max-width: 1400px; }}
 
 @media (max-width: 768px) {{
-    .main-header {{
-        flex-direction: column;
-        gap: 1rem;
-        padding: 1rem 1.5rem;
-        margin: -6rem -1rem 2rem -1rem;
-    }}
-    
-    .stats-grid {{
-        grid-template-columns: 1fr;
-    }}
-    
-    .hero-title {{
-        font-size: 2rem;
-    }}
-    
-    .hero-subtitle {{
-        font-size: 1rem;
-    }}
-    
-    .map-container {{
-        padding: 1.5rem;
-    }}
+    .stats-grid {{ grid-template-columns: 1fr; }}
+    .hero-title {{ font-size: 2rem; }}
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -684,9 +423,7 @@ st.markdown(f"""
 st.markdown(f"""
 <div class="main-header">
     <div class="logo-section">
-        <div class="logo-container">
-            <img src="app/static/assets/cyhawk_logo.png" alt="CyHawk Logo" onerror="this.style.display='none'">
-        </div>
+        <div class="logo-container"></div>
         <div class="brand-text">
             <h1><span class="brand-highlight">CyHawk</span> Africa</h1>
             <p>Threat Intelligence Platform</p>
@@ -694,236 +431,405 @@ st.markdown(f"""
     </div>
     <div class="status-indicator">
         <div class="status-dot"></div>
-        <span style="color: {C['text_dim']}; font-size: 0.85rem; font-weight: 500;">Live</span>
+        <span style="color: {C['text_dim']}; font-size: 0.85rem;">Live</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar theme toggle
 with st.sidebar:
-    st.markdown("### Settings")
-    if st.button("🌓 Toggle Dark/Light Mode", use_container_width=True):
+    if st.button("🌓 Toggle Theme", use_container_width=True):
         toggle_theme()
         st.rerun()
 
 # ═══════════════════════════════════════════════════════════
-# HERO SECTION
+# HERO
 # ═══════════════════════════════════════════════════════════
 st.markdown(f"""
 <div class="hero-label">CONTINENTAL INTELLIGENCE</div>
-<h1 class="hero-title">Africa Threat<br>Landscape</h1>
-<p class="hero-subtitle">Real-time cyber threat monitoring across African nations with advanced intelligence analytics</p>
+<h1 class="hero-title">Africa Threat Landscape</h1>
+<p class="hero-subtitle">Real-time cyber threat monitoring across African nations</p>
 """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════
-# ENHANCED FILTERS (6 DROPDOWNS)
+# FILTERS
 # ═══════════════════════════════════════════════════════════
 st.markdown('<div class="filter-container">', unsafe_allow_html=True)
 
-col1, col2, col3, col4, col5, col6 = st.columns(6)
+c1, c2, c3, c4, c5, c6 = st.columns(6)
 
-with col1:
+with c1:
     years = ["All Years"] + sorted([str(y) for y in df['year'].unique()], reverse=True)
-    selected_year = st.selectbox("Year", years, key="filter_year")
+    year = st.selectbox("Year", years)
 
-with col2:
-    months = ["All Months"] + ["January", "February", "March", "April", "May", "June",
+with c2:
+    months = ["All Months", "January", "February", "March", "April", "May", "June",
               "July", "August", "September", "October", "November", "December"]
-    selected_month = st.selectbox("Month", months, key="filter_month")
+    month = st.selectbox("Month", months)
 
-with col3:
+with c3:
     countries = ["All Countries"] + sorted(df['country'].unique().tolist())
-    selected_country = st.selectbox("Country", countries, key="filter_country")
+    country = st.selectbox("Country", countries)
 
-with col4:
-    threat_types = ["All Types"] + sorted(df['threat_type'].unique().tolist())
-    selected_type = st.selectbox("Threat Type", threat_types, key="filter_type")
+with c4:
+    types = ["All Types"] + sorted(df['threat_type'].unique().tolist())
+    threat_type = st.selectbox("Threat Type", types)
 
-with col5:
+with c5:
     actors = ["All Actors"] + sorted(df['threat_actor'].unique().tolist())
-    selected_actor = st.selectbox("Threat Actor", actors, key="filter_actor")
+    actor = st.selectbox("Threat Actor", actors)
 
-with col6:
-    severities = ["All Severities", "Critical", "High", "Medium", "Low"]
-    selected_severity = st.selectbox("Severity", severities, key="filter_severity")
+with c6:
+    sevs = ["All Severities", "Critical", "High", "Medium", "Low"]
+    severity = st.selectbox("Severity", sevs)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Apply filters
-filtered_df = filter_data(df, selected_year, selected_month, selected_country, 
-                          selected_type, selected_actor, selected_severity)
+filtered_df = filter_data(df, year, month, country, threat_type, actor, severity)
 
 # ═══════════════════════════════════════════════════════════
-# AFRICA THREAT MAP
+# AFRICA MAP
 # ═══════════════════════════════════════════════════════════
 map_df = process_map_data(filtered_df)
 
-st.markdown('<div class="map-container"><div class="map-inner">', unsafe_allow_html=True)
+st.markdown('<div class="map-container">', unsafe_allow_html=True)
 
-# Build hover texts
 hover_texts = []
 for _, row in map_df.iterrows():
-    actors_text = ""
+    actors_txt = ""
     if row['top_actors']:
-        actors_text = "<br><b>Top Threat Actors:</b>"
-        for actor in row['top_actors'][:5]:
-            actors_text += f"<br>  • {actor['name']}: {actor['count']}"
+        actors_txt = "<br><b>Top Actors:</b>"
+        for a in row['top_actors'][:5]:
+            actors_txt += f"<br>  • {a['name']}: {a['count']}"
     
-    types_text = ""
+    types_txt = ""
     if row['threat_types']:
-        types_text = "<br><b>Top Threats:</b>"
-        for ttype in row['threat_types'][:3]:
-            types_text += f"<br>  • {ttype['type']}: {ttype['count']}"
+        types_txt = "<br><b>Top Threats:</b>"
+        for t in row['threat_types'][:3]:
+            types_txt += f"<br>  • {t['type']}: {t['count']}"
     
-    hover_text = f"<b>{row['country']}</b><br>Total Attacks: {row['attacks']}{actors_text}{types_text}"
-    hover_texts.append(hover_text)
+    hover_texts.append(f"<b>{row['country']}</b><br>Attacks: {row['attacks']}{actors_txt}{types_txt}")
 
-# Create choropleth map
-fig_map = go.Figure()
-
-fig_map.add_trace(go.Choropleth(
-    locations=map_df['iso_alpha'],
-    z=map_df['attacks'],
-    locationmode='ISO-3',
-    colorscale=[
-        [0.0, '#0D47A1'],   # Deep Blue (Safe)
-        [0.2, '#1976D2'],   # Blue
-        [0.3, '#00BCD4'],   # Cyan
-        [0.4, '#00E676'],   # Bright Green (Low)
-        [0.5, '#FFEB3B'],   # Yellow (Moderate)
-        [0.6, '#FFC107'],   # Amber
-        [0.7, '#FF9800'],   # Orange (High)
-        [0.8, '#FF5722'],   # Deep Orange
-        [0.9, '#F44336'],   # Red
-        [1.0, '#C41E3A']    # CyHawk Red (CRITICAL)
-    ],
-    marker=dict(
-        line=dict(color=C['border'], width=0.5)
-    ),
-    colorbar=dict(
-        title="Threat<br>Level",
-        titlefont=dict(color=C['text'], size=12),
-        tickfont=dict(color=C['text'], size=10),
-        bgcolor=C['bg_card'],
-        bordercolor=C['border'],
-        borderwidth=1,
-        x=1.02
-    ),
-    text=hover_texts,
-    hovertemplate='%{text}<extra></extra>',
-    name=''
+fig = go.Figure(go.Choropleth(
+    locations=map_df['iso_alpha'], z=map_df['attacks'], locationmode='ISO-3',
+    colorscale=[[0, '#0D47A1'], [0.4, '#00E676'], [0.5, '#FFEB3B'], [0.7, '#FF9800'], [1, '#C41E3A']],
+    marker=dict(line=dict(color=C['border'], width=0.5)),
+    colorbar=dict(title="Threats", titlefont=dict(color=C['text']), tickfont=dict(color=C['text'])),
+    text=hover_texts, hovertemplate='%{text}<extra></extra>'
 ))
 
-fig_map.update_geos(
-    scope='africa',
-    projection_type='natural earth',
-    showland=True,
-    landcolor=C['bg_elevated'],
-    showocean=True,
-    oceancolor=C['bg'],
-    showcountries=True,
-    countrycolor=C['border'],
-    showlakes=False,
-    bgcolor=C['bg_card']
+fig.update_geos(
+    scope='africa', projection_type='natural earth',
+    showland=True, landcolor=C['bg_elevated'],
+    showocean=True, oceancolor=C['bg'],
+    showcountries=True, countrycolor=C['border'], bgcolor=C['bg_card']
 )
 
-fig_map.update_layout(
-    height=650,
-    margin=dict(l=0, r=0, t=0, b=0),
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    geo=dict(bgcolor='rgba(0,0,0,0)'),
+fig.update_layout(
+    height=650, margin=dict(l=0, r=0, t=0, b=0),
+    paper_bgcolor='rgba(0,0,0,0)', geo=dict(bgcolor='rgba(0,0,0,0)'),
     font=dict(color=C['text'])
 )
 
-st.plotly_chart(fig_map, use_container_width=True, config={'displayModeBar': False}, key='africa_map')
-
-st.markdown('</div></div>', unsafe_allow_html=True)
+st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+st.markdown('</div>', unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════
-# STATISTICS CARDS
+# STATS
 # ═══════════════════════════════════════════════════════════
-total_threats = len(filtered_df)
-critical_high = len(filtered_df[filtered_df['severity'].isin(['Critical', 'High'])])
-actors_count = filtered_df['threat_actor'].nunique()
-countries_count = filtered_df['country'].nunique()
+total = len(filtered_df)
+crit_high = len(filtered_df[filtered_df['severity'].isin(['Critical', 'High'])])
+actors_cnt = filtered_df['threat_actor'].nunique()
+countries_cnt = filtered_df['country'].nunique()
 
 st.markdown(f"""
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="stat-value">{total_threats}</div>
+        <div class="stat-value">{total}</div>
         <div class="stat-label">Total Threats</div>
     </div>
     <div class="stat-card">
-        <div class="stat-value">{critical_high}</div>
+        <div class="stat-value">{crit_high}</div>
         <div class="stat-label">Critical & High</div>
     </div>
     <div class="stat-card">
-        <div class="stat-value">{actors_count}</div>
+        <div class="stat-value">{actors_cnt}</div>
         <div class="stat-label">Threat Actors</div>
     </div>
     <div class="stat-card">
-        <div class="stat-value">{countries_count}</div>
+        <div class="stat-value">{countries_cnt}</div>
         <div class="stat-label">Countries</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════
-# LEGEND
-# ═══════════════════════════════════════════════════════════
 st.markdown(f"""
 <div class="legend">
-    <div class="legend-item">
-        <div class="legend-dot" style="background: #0D47A1;"></div>
-        <span class="legend-text">Safe</span>
-    </div>
-    <div class="legend-item">
-        <div class="legend-dot" style="background: #00E676;"></div>
-        <span class="legend-text">Low</span>
-    </div>
-    <div class="legend-item">
-        <div class="legend-dot" style="background: #FFEB3B;"></div>
-        <span class="legend-text">Moderate</span>
-    </div>
-    <div class="legend-item">
-        <div class="legend-dot" style="background: #FF9800;"></div>
-        <span class="legend-text">High</span>
-    </div>
-    <div class="legend-item">
-        <div class="legend-dot" style="background: #C41E3A;"></div>
-        <span class="legend-text">Critical</span>
-    </div>
+    <div class="legend-item"><div class="legend-dot" style="background: #0D47A1;"></div><span>Safe</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background: #00E676;"></div><span>Low</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background: #FFEB3B;"></div><span>Moderate</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background: #FF9800;"></div><span>High</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background: #C41E3A;"></div><span>Critical</span></div>
 </div>
 """, unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════
+# ANALYTICS SECTION 1: TOP RANSOMWARE & THREATS
+# ═══════════════════════════════════════════════════════════
+st.markdown(f"""
+<div class="section-header">
+    <div class="section-label">ANALYSIS</div>
+    <h2 class="section-title">Threat Intelligence</h2>
+</div>
+""", unsafe_allow_html=True)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chart-header">
+        <h3 class="chart-title">Top Ransomware Groups</h3>
+        <span class="chart-badge">Ransomware Activity</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    ransomware_df = filtered_df[filtered_df['threat_type'] == 'Ransomware']
+    ransomware_actors = ransomware_df['threat_actor'].value_counts().head(10)
+    
+    fig1 = go.Figure(go.Bar(
+        y=ransomware_actors.index,
+        x=ransomware_actors.values,
+        orientation='h',
+        marker=dict(color='#C41E3A'),
+        hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
+    ))
+    
+    fig1.update_layout(
+        height=300, margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
+        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text']),
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col2:
+    st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chart-header">
+        <h3 class="chart-title">Top Threats</h3>
+        <span class="chart-badge">Threat Type Breakdown</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    threat_counts = filtered_df['threat_type'].value_counts().head(10)
+    
+    colors_map = {'Ransomware': '#C41E3A', 'Phishing': '#FF9800', 'DDoS': '#FFEB3B', 
+                  'Malware': '#00E676', 'Data Breach': '#00BCD4'}
+    bar_colors = [colors_map.get(t, '#999999') for t in threat_counts.index]
+    
+    fig2 = go.Figure(go.Bar(
+        x=threat_counts.index,
+        y=threat_counts.values,
+        marker=dict(color=bar_colors),
+        hovertemplate='<b>%{x}</b><br>Count: %{y}<extra></extra>'
+    ))
+    
+    fig2.update_layout(
+        height=300, margin=dict(l=20, r=20, t=20, b=40),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text'], tickangle=-45),
+        yaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════
+# ANALYTICS SECTION 2: CLASSIFICATION & SEVERITY
+# ═══════════════════════════════════════════════════════════
+col3, col4 = st.columns(2)
+
+with col3:
+    st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chart-header">
+        <h3 class="chart-title">Threat Classification</h3>
+        <span class="chart-badge">By Type</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    class_counts = filtered_df['threat_type'].value_counts()
+    
+    fig3 = go.Figure(go.Bar(
+        y=class_counts.index,
+        x=class_counts.values,
+        orientation='h',
+        marker=dict(color='#C41E3A'),
+        hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
+    ))
+    
+    fig3.update_layout(
+        height=300, margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
+        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text']),
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig3, use_container_width=True, config={'displayModeBar': False})
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col4:
+    st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chart-header">
+        <h3 class="chart-title">Severity Analysis</h3>
+        <span class="chart-badge">Impact Level</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    sev_counts = filtered_df['severity'].value_counts()
+    sev_colors = {'Critical': '#9C27B0', 'Medium': '#FFA726', 'High': '#C41E3A', 'Low': '#66BB6A', 'Unknown': '#757575'}
+    sev_bar_colors = [sev_colors.get(s, '#999999') for s in sev_counts.index]
+    
+    fig4 = go.Figure(go.Bar(
+        x=sev_counts.index,
+        y=sev_counts.values,
+        marker=dict(color=sev_bar_colors),
+        hovertemplate='<b>%{x}</b><br>Count: %{y}<extra></extra>'
+    ))
+    
+    fig4.update_layout(
+        height=300, margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text']),
+        yaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig4, use_container_width=True, config={'displayModeBar': False})
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════
+# ANALYTICS SECTION 3: TIMELINE
+# ═══════════════════════════════════════════════════════════
+st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+st.markdown(f"""
+<div class="chart-header">
+    <h3 class="chart-title">Activity Timeline</h3>
+    <span class="chart-badge">Historical Trend</span>
+</div>
+""", unsafe_allow_html=True)
+
+timeline_df = filtered_df.groupby(filtered_df['date'].dt.to_period('D')).size().reset_index(name='count')
+timeline_df['date'] = timeline_df['date'].dt.to_timestamp()
+
+fig5 = go.Figure(go.Scatter(
+    x=timeline_df['date'],
+    y=timeline_df['count'],
+    mode='lines',
+    line=dict(color='#C41E3A', width=2),
+    fill='tozeroy',
+    fillcolor='rgba(196, 30, 58, 0.1)',
+    hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Count: %{y}<extra></extra>'
+))
+
+fig5.update_layout(
+    height=250, margin=dict(l=20, r=20, t=20, b=20),
+    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+    xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
+    yaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
+    font=dict(color=C['text'])
+)
+
+st.plotly_chart(fig5, use_container_width=True, config={'displayModeBar': False})
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════
+# ANALYTICS SECTION 4: ACTORS & INDUSTRIES
+# ═══════════════════════════════════════════════════════════
+col5, col6 = st.columns(2)
+
+with col5:
+    st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chart-header">
+        <h3 class="chart-title">Top Threat Actors</h3>
+        <span class="chart-badge">Most Active</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    top_actors = filtered_df['threat_actor'].value_counts().head(10)
+    
+    fig6 = go.Figure(go.Bar(
+        y=top_actors.index,
+        x=top_actors.values,
+        orientation='h',
+        marker=dict(color='#C41E3A'),
+        hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
+    ))
+    
+    fig6.update_layout(
+        height=300, margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
+        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text']),
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig6, use_container_width=True, config={'displayModeBar': False})
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col6:
+    st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chart-header">
+        <h3 class="chart-title">Most Targeted Industries</h3>
+        <span class="chart-badge">Sector Analysis</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    industries = filtered_df['industry'].value_counts().head(10)
+    
+    fig7 = go.Figure(go.Bar(
+        y=industries.index,
+        x=industries.values,
+        orientation='h',
+        marker=dict(color='#C41E3A'),
+        hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
+    ))
+    
+    fig7.update_layout(
+        height=300, margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(gridcolor=C['border'], showgrid=True, color=C['text']),
+        yaxis=dict(gridcolor=C['border'], showgrid=False, color=C['text']),
+        font=dict(color=C['text'])
+    )
+    
+    st.plotly_chart(fig7, use_container_width=True, config={'displayModeBar': False})
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════
 # PDF EXPORT
 # ═══════════════════════════════════════════════════════════
 st.markdown("---")
-
-export_col1, export_col2 = st.columns([3, 1])
-
-with export_col2:
-    if st.button("📥 Export PDF Report", use_container_width=True, type="primary"):
+c_a, c_b = st.columns([3, 1])
+with c_b:
+    if st.button("📥 Export PDF Report", type="primary", use_container_width=True):
         filters_applied = {
-            'Year': selected_year,
-            'Month': selected_month,
-            'Country': selected_country,
-            'Threat Type': selected_type,
-            'Threat Actor': selected_actor,
-            'Severity': selected_severity
+            'Year': year, 'Month': month, 'Country': country,
+            'Type': threat_type, 'Actor': actor, 'Severity': severity
         }
-        
-        with st.spinner('Generating PDF report...'):
-            pdf_buffer = generate_pdf(filtered_df, filters_applied)
-        
+        pdf_buf = generate_pdf(filtered_df, filters_applied)
         st.download_button(
-            label="📄 Download PDF",
-            data=pdf_buffer,
-            file_name=f"cyhawk_africa_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+            "📄 Download PDF",
+            data=pdf_buf,
+            file_name=f"cyhawk_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
             mime="application/pdf",
             use_container_width=True
         )
-        
-        st.success("✅ PDF report generated successfully!")
