@@ -991,7 +991,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 with st.sidebar:
-    if st.button("🌓 Toggle Theme", use_container_width=True):
+    if st.button("🌓", use_container_width=True, key="theme_toggle_home"):
         toggle_theme()
         st.rerun()
 
