@@ -205,9 +205,7 @@ def load_data():
             st.error("⚠️ **ERROR: No valid data remaining after cleanup!**")
             st.stop()
         
-        # Success message
-        st.success(f"✅ Successfully loaded {len(df)} incidents from {csv_path}")
-        
+      # Data loaded successfully - no message shown
         return df
         
     except Exception as e:
@@ -785,13 +783,18 @@ st.markdown(f"""
 }}
 
 .nav-link {{
-    color: {C['text_dim']}; text-decoration: none;
+    color: {C['cyhawk_red']};  /* Changed from text_dim to red */
+    text-decoration: none;
     font-size: 0.9rem; font-weight: 500;
     transition: color 0.2s;
 }}
 
 .nav-link:hover {{ color: {C['text']}; }}
-.nav-link.active {{ color: {C['cyhawk_red']}; }}
+.nav-link.active {{ 
+    color: {C['cyhawk_red']}; 
+    font-weight: 700;
+    border-bottom: 2px solid {C['cyhawk_red']};
+}}
 
 .status-indicator {{
     display: flex; align-items: center; gap: 0.5rem;
