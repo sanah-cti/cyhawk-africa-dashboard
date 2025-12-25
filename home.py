@@ -783,15 +783,15 @@ st.markdown(f"""
 }}
 
 .nav-link {{
-    color: {C['cyhawk_red']};  /* Changed from text_dim to red */
-    text-decoration: none;
+    color: {C['cyhawk_red']} !important;  /* Force red color */
+    text-decoration: none !important;
     font-size: 0.9rem; font-weight: 500;
     transition: color 0.2s;
 }}
 
-.nav-link:hover {{ color: {C['text']}; }}
+.nav-link:hover {{ color: {C['text']} !important; }}
 .nav-link.active {{ 
-    color: {C['cyhawk_red']}; 
+    color: {C['cyhawk_red']} !important; 
     font-weight: 700;
     border-bottom: 2px solid {C['cyhawk_red']};
 }}
